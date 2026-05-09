@@ -11,6 +11,87 @@ export type Room = "chat" | "workspace" | "agents" | "vinted" | "brain";
 
 export const ROOMS: Room[] = ["chat", "workspace", "agents", "vinted", "brain"];
 
+// ─── 16-bit top-down pixel-art NPC sprites ───────────────────────────────────
+//
+// Each sprite is 8×12 pixels (1 SVG unit per pixel), centred at (0,0).
+// Two walk frames — legs apart (A) and legs together (B) — are both rendered
+// inside each <g class="npc">; CSS keyframes toggle their visibility so the
+// sprite animates while the group translates along its path.
+//
+// Four colour palettes give each NPC slot a distinct look.
+
+interface Palette {
+  hair: string; skin: string; shirt: string; pants: string; boot: string;
+}
+
+const PALETTES: Palette[] = [
+  { hair: "#2D1B0E", skin: "#F2C89E", shirt: "#2D5FA8", pants: "#1A3A7A", boot: "#120906" },
+  { hair: "#111111", skin: "#F2C89E", shirt: "#A82D2D", pants: "#7A1A1A", boot: "#0E0606" },
+  { hair: "#C8A93E", skin: "#D4905A", shirt: "#2DA855", pants: "#1A7A3A", boot: "#0A1206" },
+  { hair: "#E0E0E0", skin: "#D4905A", shirt: "#7B2DA8", pants: "#3A1A7A", boot: "#0E060E" },
+];
+
+// 8-wide pixel rows, y from -6 to +5 (12 rows total), x from -4 to +4.
+// Each row is 8 characters; key letters map to palette fields + special colours.
+// '.' = transparent.
+// Frame A — legs apart (walking)
+const FRAME_A_ROWS = [
+  "..HHHH..",  // y=-6  hair
+  ".HSSSSH.",  // y=-5  head
+  ".HSESSH.",  // y=-4  head (E = eye, dark dot)
+  ".HSSSSH.",  // y=-3  chin
+  "..TTTT..",  // y=-2  collar
+  ".TTTTTT.",  // y=-1  torso
+  ".TTTTTT.",  // y= 0  torso
+  ".TTTTTT.",  // y= 1  torso
+  "..PPPP..",  // y= 2  waist
+  ".PP..PP.",  // y= 3  legs apart
+  ".PP..PP.",  // y= 4  legs
+  ".BB..BB.",  // y= 5  boots
+];
+// Frame B — legs together (other step)
+const FRAME_B_ROWS = [
+  "..HHHH..",  // y=-6
+  ".HSSSSH.",  // y=-5
+  ".HSESSH.",  // y=-4
+  ".HSSSSH.",  // y=-3
+  "..TTTT..",  // y=-2
+  ".TTTTTT.",  // y=-1
+  ".TTTTTT.",  // y= 0
+  ".TTTTTT.",  // y= 1
+  "..PPPP..",  // y= 2
+  "..PPPP..",  // y= 3  legs together
+  ".PP..PP.",  // y= 4
+  ".BB..BB.",  // y= 5
+];
+
+function buildFrame(rows: string[], pal: Palette): string {
+  const colourOf: Record<string, string> = {
+    H: pal.hair, S: pal.skin, T: pal.shirt,
+    P: pal.pants, B: pal.boot, E: "#1A0808",
+  };
+  const rects: string[] = [];
+  rows.forEach((row, ry) => {
+    for (let rx = 0; rx < 8; rx++) {
+      const ch = row[rx];
+      const fill = colourOf[ch];
+      if (!fill) continue;
+      rects.push(
+        `<rect x="${rx - 4}" y="${ry - 6}" width="1" height="1" fill="${fill}"/>`,
+      );
+    }
+  });
+  return rects.join("");
+}
+
+function npcSprite(palIdx: number): string {
+  const pal = PALETTES[palIdx % PALETTES.length];
+  return `
+    <g class="sprite-a">${buildFrame(FRAME_A_ROWS, pal)}</g>
+    <g class="sprite-b">${buildFrame(FRAME_B_ROWS, pal)}</g>
+  `;
+}
+
 // Shared SVG wrapper. Furniture is room-specific; NPC <g>s are identical and
 // styled / animated by gamify.css. The four NPC slots are always rendered;
 // CSS hides #3/#4 unless the room is in "working" or "busy" state.
@@ -41,11 +122,11 @@ function wrap(room: Room, furniture: string, fx: string = ""): string {
       <!-- Per-room flair (sparkles, screen lines, etc.) -->
       <g class="fx-layer">${fx}</g>
 
-      <!-- 4 NPC slots — animated by CSS keyframes -->
-      <g class="npc npc-1"><rect class="npc-body" x="-2" y="-2" width="4" height="4"/><rect class="npc-head" x="-1" y="-2" width="2" height="1"/></g>
-      <g class="npc npc-2"><rect class="npc-body" x="-2" y="-2" width="4" height="4"/><rect class="npc-head" x="-1" y="-2" width="2" height="1"/></g>
-      <g class="npc npc-3"><rect class="npc-body" x="-2" y="-2" width="4" height="4"/><rect class="npc-head" x="-1" y="-2" width="2" height="1"/></g>
-      <g class="npc npc-4"><rect class="npc-body" x="-2" y="-2" width="4" height="4"/><rect class="npc-head" x="-1" y="-2" width="2" height="1"/></g>
+      <!-- 4 NPC slots — 16-bit pixel-art sprites, animated by CSS -->
+      <g class="npc npc-1">${npcSprite(0)}</g>
+      <g class="npc npc-2">${npcSprite(1)}</g>
+      <g class="npc npc-3">${npcSprite(2)}</g>
+      <g class="npc npc-4">${npcSprite(3)}</g>
     </svg>
   `;
 }

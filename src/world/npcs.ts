@@ -45,12 +45,15 @@ export interface NPC {
   labelStatus: HTMLSpanElement;
   hovered: boolean;
   flashUntil: number;
+  homePos: THREE.Vector3;
+  knockbackVel: THREE.Vector3;
 }
 
 export interface NPCsHandle {
   npcs: NPC[];
   raycastNPC(ev: PointerEvent): NPC | null;
   setHover(npc: NPC | null): void;
+  applyKnockback(index: number): void;
   step(dt: number): void;
   dispose(): void;
 }
@@ -148,6 +151,8 @@ export function createNPCs(
       label, labelStatus,
       hovered: false,
       flashUntil: 0,
+      homePos: group.position.clone(),
+      knockbackVel: new THREE.Vector3(),
     };
   });
 
@@ -189,6 +194,15 @@ export function createNPCs(
     for (let i = 0; i < npcs.length; i++) {
       const npc = npcs[i];
 
+      // Knockback — apply velocity then spring back toward homePos.
+      if (npc.knockbackVel.lengthSq() > 0.00001) {
+        npc.group.position.addScaledVector(npc.knockbackVel, dt);
+        npc.knockbackVel.multiplyScalar(Math.max(0, 1 - dt * 6)); // damping
+        // Spring back toward home
+        const toHome = npc.homePos.clone().sub(npc.group.position);
+        npc.group.position.addScaledVector(toHome, Math.min(1, dt * 4));
+      }
+
       // Idle bob — subtle, phase-offset per NPC so they don't move in sync
       const phase = t + i * 0.7;
       const bob = Math.sin(phase * 2) * 0.04;
@@ -219,6 +233,19 @@ export function createNPCs(
     }
   }
 
+  function applyKnockback(index: number): void {
+    const npc = npcs[index];
+    if (!npc) return;
+    // Impulse radially outward from the scene centre, plus a slight upward pop.
+    const outward = npc.group.position.clone().normalize();
+    npc.knockbackVel.set(
+      outward.x * 5,
+      2.5,
+      outward.z * 5,
+    );
+    npc.flashUntil = Math.max(npc.flashUntil, performance.now() + 400);
+  }
+
   function dispose() {
     for (const npc of npcs) {
       scene.remove(npc.group);
@@ -235,7 +262,7 @@ export function createNPCs(
     antGeom.dispose();
   }
 
-  return { npcs, raycastNPC, setHover, step, dispose };
+  return { npcs, raycastNPC, setHover, applyKnockback, step, dispose };
 }
 
 /**

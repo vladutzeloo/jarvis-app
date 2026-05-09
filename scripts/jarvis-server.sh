@@ -133,15 +133,9 @@ if [ "$DO_RUFLO" = "1" ]; then
 fi
 
 echo "[server] copying Python modules from $SERVER_SRC -> $INSTALL_DIR ..."
-cp "$SERVER_SRC/server.py" "$INSTALL_DIR/server.py"
-cp "$SERVER_SRC/synthesis.py" "$INSTALL_DIR/synthesis.py"
-cp "$SERVER_SRC/system_stats.py" "$INSTALL_DIR/system_stats.py"
-if [ "$DO_RUFLO" = "1" ]; then
-    cp "$SERVER_SRC/ruflo_runner.py" "$INSTALL_DIR/ruflo_runner.py"
-fi
-if [ "$DO_WHISPER" = "1" ]; then
-    cp "$SERVER_SRC/transcription.py" "$INSTALL_DIR/transcription.py"
-fi
+for _py in server.py synthesis.py system_stats.py vinted_runner.py ruflo_runner.py transcription.py; do
+    [ -f "$SERVER_SRC/$_py" ] && cp "$SERVER_SRC/$_py" "$INSTALL_DIR/$_py"
+done
 
 if [ "$DO_PIPER" = "1" ]; then
     echo "[piper] generating test.wav ..."

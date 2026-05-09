@@ -808,11 +808,34 @@ header { padding: 8px 18px; gap: 14px; }
 
 .scene .npc { transform-box: fill-box; }
 
-.scene .npc-body {
-  fill: currentColor;
-  filter: drop-shadow(0 0 3px color-mix(in srgb, currentColor 50%, transparent));
+/* 16-bit walk-cycle — sprite-a and sprite-b alternate visibility every 0.22 s.
+   The .npc group's animation-duration controls movement speed (unchanged);
+   the sprite flip runs on its own shorter timer so the walk cycle is independent
+   of the path speed. npc-2/3/4 have phase offsets so they don't stride in sync. */
+@keyframes sprite-flip-a {
+  0%, 49.9% { visibility: visible; }
+  50%, 100%  { visibility: hidden;  }
 }
-.scene .npc-head { fill: rgba(255, 255, 255, 0.85); }
+@keyframes sprite-flip-b {
+  0%, 49.9% { visibility: hidden;  }
+  50%, 100%  { visibility: visible; }
+}
+
+.scene .npc .sprite-a { animation: sprite-flip-a 0.44s steps(1) infinite; }
+.scene .npc .sprite-b { animation: sprite-flip-b 0.44s steps(1) infinite; }
+
+.scene .npc-2 .sprite-a,
+.scene .npc-2 .sprite-b { animation-delay: -0.11s; }
+.scene .npc-3 .sprite-a,
+.scene .npc-3 .sprite-b { animation-delay: -0.22s; }
+.scene .npc-4 .sprite-a,
+.scene .npc-4 .sprite-b { animation-delay: -0.33s; }
+
+/* Faster stride when the tile is active */
+.hub-tile[data-state="working"] .scene .npc .sprite-a,
+.hub-tile[data-state="working"] .scene .npc .sprite-b { animation-duration: 0.28s; }
+.hub-tile[data-state="busy"] .scene .npc .sprite-a,
+.hub-tile[data-state="busy"] .scene .npc .sprite-b { animation-duration: 0.18s; }
 
 /* Default opacity per NPC slot — tile state will reveal more of them */
 .scene .npc-1 { opacity: 0.85; }

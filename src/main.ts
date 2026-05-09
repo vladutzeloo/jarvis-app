@@ -38,4 +38,4 @@ if (getVaultPath()) indexVault().then(refreshBrainViz).catch(() => {});
 
 initAmbient3D();
 initBrainViz3D();
-initWorld();
+void initWorld();

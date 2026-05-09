@@ -27,18 +27,22 @@ import { buildCurrencyGraph } from "./graph";
 import { initDJ } from "./dj";
 import { stepFinanceSim } from "./finance";
 import { sfx } from "./sfx";
+import { initAudioHud } from "./audio-hud";
+import {
+  initPhysics,
+  addBrainSensor,
+  addNPCSensor,
+  spawnProjectile,
+  removeProjectile,
+  stepPhysics,
+  type PhysicsProjectile,
+} from "./physics";
 
 const VIEW_NAME = "world";
 
-interface Projectile {
-  mesh: THREE.Mesh;
-  velocity: THREE.Vector3;
-  life: number;
-}
-
 let started = false;
 
-export function initWorld(): void {
+export async function initWorld(): Promise<void> {
   if (started) return;
   started = true;
 
@@ -47,6 +51,9 @@ export function initWorld(): void {
   const scoreEl = document.getElementById("world-score");
   const hintEl = document.getElementById("world-hint");
   if (!view || !canvas) return;
+
+  await initPhysics();
+  addBrainSensor();
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x05080d);
@@ -169,6 +176,7 @@ export function initWorld(): void {
   const vaultHandle = buildVault(scene);
   const graphHandle = buildCurrencyGraph(scene, new THREE.Vector3(-7.2, 0.5, -3.3));
   const djHandle = initDJ();
+  initAudioHud();
 
   // NPC launchers — 7 default pawns + the DJ as the 8th. createNPCs lays
   // them out evenly on a ring so the spacing stays balanced.
@@ -176,9 +184,11 @@ export function initWorld(): void {
     ...DEFAULT_NPCS,
     djHandle.npcConfig,
   ]);
+  // Register NPC physics sensors now that positions are known.
+  npcsHandle.npcs.forEach((npc, i) => addNPCSensor(npc.group.position, i));
 
-  // Projectile pool
-  const projectiles: Projectile[] = [];
+  // Projectile pool — backed by Rapier rigid bodies via physics.ts.
+  const projectiles: PhysicsProjectile[] = [];
   const projGeom = new THREE.SphereGeometry(0.07, 12, 12);
   const projMat = new THREE.MeshBasicMaterial({ color: 0xa8efff });
 
@@ -216,7 +226,7 @@ export function initWorld(): void {
     const m = new THREE.Mesh(projGeom, projMat);
     m.position.copy(origin);
     scene.add(m);
-    projectiles.push({ mesh: m, velocity: dir.multiplyScalar(28), life: 1.6 });
+    projectiles.push(spawnProjectile(m, origin, dir.clone().multiplyScalar(28), 1.6));
     if (hintEl) hintEl.classList.add("dimmed");
   }
 
@@ -313,7 +323,6 @@ export function initWorld(): void {
   fit();
   const stopResize = observeResize(view, fit);
 
-  const tmp = new THREE.Vector3();
   const loop = createLoop(dt => {
     coreGroup.rotation.y += dt * 0.4;
     coreGroup.rotation.x += dt * 0.15;
@@ -347,21 +356,30 @@ export function initWorld(): void {
     // knot's rotation.
     memoryGroup.rotation.y += dt * 0.05;
 
-    for (let i = projectiles.length - 1; i >= 0; i--) {
-      const p = projectiles[i];
-      p.mesh.position.addScaledVector(p.velocity, dt);
-      p.life -= dt;
-      tmp.copy(p.mesh.position);
-      if (tmp.length() < HIT_RADIUS) {
+    // Step Rapier — syncs mesh positions + returns collision events.
+    const hits = stepPhysics(dt, projectiles);
+    for (const hit of hits) {
+      const projIdx = projectiles.findIndex(p => p.collider.handle === hit.projColliderHandle);
+      if (projIdx === -1) continue; // duplicate event for already-removed proj
+      const proj = projectiles[projIdx];
+      if (hit.kind === "brain") {
         bloom = 1;
         setScore(score + 1);
         sfx.hit();
-        scene.remove(p.mesh);
-        projectiles.splice(i, 1);
-        continue;
+      } else {
+        npcsHandle.applyKnockback(hit.index);
+        sfx.hit();
       }
+      scene.remove(proj.mesh);
+      removeProjectile(proj);
+      projectiles.splice(projIdx, 1);
+    }
+    // Expire projectiles that ran out of life or flew too far.
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+      const p = projectiles[i];
       if (p.life <= 0 || p.mesh.position.length() > 60) {
         scene.remove(p.mesh);
+        removeProjectile(p);
         projectiles.splice(i, 1);
       }
     }
