@@ -223,6 +223,7 @@
         <button class="tab" data-tab="vinted">Vinted</button>
         <button class="tab" data-tab="brain">Brain</button>
         <button class="tab active" data-tab="world">World</button>
+        <button class="tab" data-tab="isocity">City</button>
       </nav>
       <div id="xp-hud" class="xp-hud" title="Open the Hub"></div>
       <div id="stats" class="stats"></div>
@@ -281,12 +282,12 @@
     <section class="view" data-view="chat">
       <div class="toolbar">
         <select id="model-picker" title="Model"></select>
-        <button id="clear" title="New conversation">⟲ New</button>
-        <button id="remember" title="Save this conversation to your vault (06_Memory)">📌 Remember</button>
-        <button id="settings-toggle" title="Tweaks: temperature, system prompt, context length...">⚙</button>
-        <button id="research-toggle" title="Research mode: fast model researches your Brain, heavy model answers">🔬</button>
-        <button id="voice-toggle" title="Speak responses" class="voice-on">🔊</button>
-        <button id="camera-toggle" title="Toggle camera + gestures">📹</button>
+        <button id="clear" aria-label="New conversation" title="New conversation">⟲ New</button>
+        <button id="remember" aria-label="Save this conversation" title="Save this conversation to your vault (06_Memory)">📌 Remember</button>
+        <button id="settings-toggle" aria-label="Open settings" title="Tweaks: temperature, system prompt, context length...">⚙</button>
+        <button id="research-toggle" aria-label="Toggle research mode" title="Research mode: fast model researches your Brain, heavy model answers">🔬</button>
+        <button id="voice-toggle" aria-label="Toggle text to speech" title="Speak responses" class="voice-on">🔊</button>
+        <button id="camera-toggle" aria-label="Toggle camera" title="Toggle camera + gestures">📹</button>
         <span id="tts-engine" class="tts-engine" title="Active speech engine">🌐 Web Speech</span>
         <select id="tts-style" title="JARVIS voice style">
           <option value="alan">Alan — proper</option>
@@ -558,14 +559,22 @@
 
         <!-- Audio controls (top-right; built by src/world/audio-hud.ts) -->
         <div id="world-audio-hud" class="world-audio-hud"></div>
+
+        <!-- Librarian console (bottom-left; built by src/world/librarian.ts) -->
+        <div id="librarian-dock" class="librarian-dock hidden" aria-hidden="true"></div>
       </div>
+    </section>
+
+    <!-- City tab -->
+    <section class="view" data-view="isocity">
+      <iframe src="http://localhost:3000" style="width: 100%; height: 100%; border: none;"></iframe>
     </section>
 
     <!-- Settings drawer -->
     <aside id="settings-drawer" class="settings-drawer hidden">
       <div class="settings-header">
         <span class="settings-title">Tweaks</span>
-        <button id="settings-close" class="ghost" title="Close">×</button>
+        <button id="settings-close" class="ghost" aria-label="Close settings" title="Close">×</button>
       </div>
 
       <div class="settings-section">
@@ -643,6 +652,34 @@
           <span class="settings-nvidia-msg" id="settings-nvidia-msg"></span>
         </div>
         <div class="settings-hint settings-nvidia-path" id="settings-nvidia-path"></div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-label">WOW mode</div>
+        <div class="settings-row settings-toggle-row">
+          <label for="settings-wow-enabled">Warcraft III sounds <span class="settings-hint">accept · ask · complete</span></label>
+          <label class="settings-switch" title="Toggle WOW mode">
+            <input type="checkbox" id="settings-wow-enabled" />
+            <span class="settings-switch-track"><span class="settings-switch-thumb"></span></span>
+          </label>
+        </div>
+        <div class="settings-section-label settings-subsection-label">Race</div>
+        <div class="settings-presets settings-wow-races">
+          <button class="preset-btn wow-race-btn" data-race="human" title="Bright square-wave fanfare">Human</button>
+          <button class="preset-btn wow-race-btn" data-race="orc" title="Low gritty saw + noise">Orc</button>
+          <button class="preset-btn wow-race-btn" data-race="undead" title="Detuned minor triangle">Undead</button>
+          <button class="preset-btn wow-race-btn" data-race="nightelf" title="High sine bells">Night Elf</button>
+        </div>
+        <div class="settings-row">
+          <label for="settings-wow-volume">Volume</label>
+          <span class="settings-value" id="settings-wow-volume-value">60%</span>
+        </div>
+        <input type="range" id="settings-wow-volume" min="0" max="1" step="0.05" value="0.6" />
+        <div class="settings-actions">
+          <button id="settings-wow-test" class="ghost" title="Play a fanfare in the active race">Test</button>
+          <button id="settings-wow-reroll" class="ghost" title="Pick a different race at random">Reroll</button>
+          <span class="settings-hint" id="settings-wow-hint">Drop your own clips at <code>public/wow/&lt;race&gt;/&lt;event&gt;.mp3</code> to override</span>
+        </div>
       </div>
 
       <div class="settings-section">

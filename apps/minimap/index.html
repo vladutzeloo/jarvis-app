@@ -14,6 +14,16 @@
         <span class="brand-sub">// MINIMAP</span>
       </div>
       <div class="topbar-right">
+        <button
+          id="orc-badge"
+          class="pill pill-orc"
+          type="button"
+          aria-label="Orc notifications"
+          title="Orc notifications"
+        >
+          <span class="orc-badge-glyph" aria-hidden="true">👹</span>
+          <span class="orc-badge-count" id="orc-badge-count">0</span>
+        </button>
         <span id="server-pill" class="pill pill-unknown">server</span>
         <span id="ollama-pill" class="pill pill-unknown">ollama</span>
         <button id="settings-toggle" class="icon-btn" aria-label="Settings">⚙</button>
@@ -32,6 +42,68 @@
         <h2>Jobs &amp; Bots</h2>
         <div id="jobs-body" class="card-body">
           <div class="muted">Waiting for /ruflo/jobs and /vinted/bots…</div>
+        </div>
+      </section>
+
+      <section class="card card-world" id="card-world">
+        <header class="world-head">
+          <h2>World <span class="world-sub" id="world-status">orc · idle</span></h2>
+          <div class="world-actions">
+            <button id="orc-run-now" class="ghost-btn" type="button">run now</button>
+          </div>
+        </header>
+        <div class="world-stage" id="world-stage">
+          <svg
+            id="world-svg"
+            viewBox="0 0 400 140"
+            preserveAspectRatio="xMidYMid meet"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <defs>
+              <linearGradient id="world-ground" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="rgba(92, 217, 255, 0.18)" />
+                <stop offset="100%" stop-color="rgba(92, 217, 255, 0.02)" />
+              </linearGradient>
+            </defs>
+            <line
+              class="world-grid-line"
+              x1="0"
+              x2="400"
+              y1="110"
+              y2="110"
+              stroke="rgba(125,142,168,0.25)"
+              stroke-dasharray="3 4"
+            />
+            <g id="world-waypoints"></g>
+            <g id="world-orc" transform="translate(40 96)">
+              <circle class="orc-shadow" cx="0" cy="14" rx="10" ry="3"></circle>
+              <text class="orc-sprite" x="0" y="0" text-anchor="middle">👹</text>
+            </g>
+            <g id="world-bubble" class="world-bubble hidden" transform="translate(0 0)">
+              <rect
+                x="-44"
+                y="-46"
+                rx="6"
+                ry="6"
+                width="88"
+                height="22"
+                class="world-bubble-bg"
+              ></rect>
+              <text x="0" y="-31" text-anchor="middle" class="world-bubble-text">
+                💭 thinking…
+              </text>
+            </g>
+          </svg>
+        </div>
+        <div class="world-foot">
+          <div id="world-current" class="world-current muted">
+            no active prompt
+          </div>
+          <div class="section-label">recent</div>
+          <div id="world-recent" class="world-recent">
+            <div class="muted">orc has not finished a cycle yet.</div>
+          </div>
         </div>
       </section>
 
@@ -80,6 +152,23 @@
           <input id="setting-followlogs" type="checkbox" />
           <span>Auto-attach to new ruflo jobs</span>
         </label>
+
+        <div class="settings-section">
+          <div class="settings-section-title">Orc NPC</div>
+          <label class="row">
+            <input id="setting-orc-enabled" type="checkbox" />
+            <span>Run orc on schedule</span>
+          </label>
+          <label>
+            <span>Orc model (Ollama)</span>
+            <input id="setting-orc-model" type="text" placeholder="qwen2.5-coder:latest" />
+          </label>
+          <label>
+            <span>Orc interval (seconds)</span>
+            <input id="setting-orc-interval" type="number" min="30" step="30" />
+          </label>
+        </div>
+
         <button id="setting-save" class="primary-btn">Save</button>
         <p id="setting-status" class="muted"></p>
       </div>

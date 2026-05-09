@@ -11,6 +11,17 @@ import {
 import type { JarvisSettings, Message } from "../types";
 import { loadSystemPrompt } from "../vault";
 import { loadModels } from "../chat/models";
+import {
+  isWowEnabled,
+  setWowEnabled,
+  getWowVolume,
+  setWowVolume,
+  getWowRace,
+  setWowRace,
+  rerollWowRace,
+  previewWowRace,
+  WOW_RACES,
+} from "../world/wow";
 
 const STORAGE_SETTINGS = "jarvis.settings";
 
@@ -215,6 +226,60 @@ nvidiaSaveBtn?.addEventListener("click", saveNvidiaSettings);
 nvidiaTestBtn?.addEventListener("click", testNvidiaConnection);
 
 refreshNvidiaSettingsUI();
+
+// ─── WOW mode ──────────────────────────────────────────────────────────
+
+const wowEnabledEl = document.getElementById("settings-wow-enabled") as HTMLInputElement | null;
+const wowVolumeEl  = document.getElementById("settings-wow-volume") as HTMLInputElement | null;
+const wowVolumeVal = document.getElementById("settings-wow-volume-value") as HTMLElement | null;
+const wowTestBtn   = document.getElementById("settings-wow-test") as HTMLButtonElement | null;
+const wowRerollBtn = document.getElementById("settings-wow-reroll") as HTMLButtonElement | null;
+const wowRaceBtns  = document.querySelectorAll<HTMLButtonElement>(".wow-race-btn");
+
+function refreshWowRaceUI(): void {
+  const r = getWowRace();
+  wowRaceBtns.forEach(b => b.classList.toggle("active", b.dataset.race === r));
+}
+
+function refreshWowUI(): void {
+  if (wowEnabledEl) wowEnabledEl.checked = isWowEnabled();
+  const vol = getWowVolume();
+  if (wowVolumeEl)  wowVolumeEl.value = String(vol);
+  if (wowVolumeVal) wowVolumeVal.textContent = `${Math.round(vol * 100)}%`;
+  refreshWowRaceUI();
+}
+
+wowEnabledEl?.addEventListener("change", () => {
+  setWowEnabled(wowEnabledEl.checked);
+});
+
+wowVolumeEl?.addEventListener("input", () => {
+  const v = Number(wowVolumeEl.value);
+  setWowVolume(v);
+  if (wowVolumeVal) wowVolumeVal.textContent = `${Math.round(v * 100)}%`;
+});
+
+wowTestBtn?.addEventListener("click", () => {
+  previewWowRace();
+});
+
+wowRerollBtn?.addEventListener("click", () => {
+  rerollWowRace();
+  refreshWowRaceUI();
+  previewWowRace();
+});
+
+wowRaceBtns.forEach(btn => {
+  btn.addEventListener("click", () => {
+    const r = btn.dataset.race;
+    if (!r || !(WOW_RACES as readonly string[]).includes(r)) return;
+    setWowRace(r as typeof WOW_RACES[number]);
+    refreshWowRaceUI();
+    previewWowRace();
+  });
+});
+
+refreshWowUI();
 
 // ─── Public API for the chat send loop ─────────────────────────────────
 
