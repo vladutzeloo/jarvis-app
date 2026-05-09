@@ -14,6 +14,7 @@ import {
   observeResize,
   onViewChange,
 } from "../three/engine";
+import { createBloomComposer } from "../three/post";
 
 const VIEW_NAME = "world";
 
@@ -103,7 +104,18 @@ export function initWorld(): void {
   const projMat = new THREE.MeshBasicMaterial({ color: 0xa8efff });
 
   let score = 0;
-  let bloom = 0;
+  // Local 0..1 envelope that ramps to 1 on hit and decays toward 0. Drives
+  // both the knot's emissive boost and the post-process bloom intensity, so
+  // a single hit produces a visible glow surge instead of a static highlight.
+  let hitFlash = 0;
+
+  // HDR bloom — picks up the cyan emissive on the knot and the wireframe
+  // cage. Intensity is animated below.
+  const post = createBloomComposer(renderer, scene, camera, {
+    intensity: 0.85,
+    luminanceThreshold: 0.5,
+    luminanceSmoothing: 0.25,
+  });
 
   function fireFromPointer(ev: PointerEvent) {
     if (ev.button !== undefined && ev.button !== 0) return;
@@ -146,7 +158,10 @@ export function initWorld(): void {
     if (scoreEl) scoreEl.textContent = String(n);
   }
 
-  const fit = () => fitRenderer(renderer, camera, view);
+  const fit = () => {
+    fitRenderer(renderer, camera, view);
+    post.setSize(view.clientWidth, view.clientHeight);
+  };
   fit();
   const stopResize = observeResize(view, fit);
 
@@ -156,9 +171,12 @@ export function initWorld(): void {
     coreGroup.rotation.x += dt * 0.15;
     cage.rotation.y -= dt * 0.6;
 
-    bloom = Math.max(0, bloom - dt * 2.4);
-    knotMat.emissiveIntensity = 0.6 + bloom * 1.6;
-    cageMat.opacity = 0.35 + bloom * 0.5;
+    hitFlash = Math.max(0, hitFlash - dt * 2.4);
+    knotMat.emissiveIntensity = 0.6 + hitFlash * 1.6;
+    cageMat.opacity = 0.35 + hitFlash * 0.5;
+    // Lift bloom a little above the resting value when a hit lands so the
+    // surge is visible without the idle scene looking blown out.
+    post.bloom.intensity = 0.85 + hitFlash * 1.6;
 
     for (let i = projectiles.length - 1; i >= 0; i--) {
       const p = projectiles[i];
@@ -166,7 +184,7 @@ export function initWorld(): void {
       p.life -= dt;
       tmp.copy(p.mesh.position);
       if (tmp.length() < HIT_RADIUS) {
-        bloom = 1;
+        hitFlash = 1;
         setScore(score + 1);
         scene.remove(p.mesh);
         projectiles.splice(i, 1);
@@ -179,7 +197,7 @@ export function initWorld(): void {
     }
 
     controls.update();
-    renderer.render(scene, camera);
+    post.composer.render(dt);
   }, {
     isVisible: () => isViewActive(VIEW_NAME),
   });
@@ -209,6 +227,7 @@ export function initWorld(): void {
       cageMat.dispose();
       projGeom.dispose();
       projMat.dispose();
+      post.dispose();
       renderer.dispose();
     },
   };
