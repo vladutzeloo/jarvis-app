@@ -5,7 +5,7 @@ del "%LOG%" >nul 2>&1
 
 echo Running fix-cors.sh as root in WSL... > "%LOG%"
 echo. >> "%LOG%"
-wsl -d Ubuntu-24.04 -u root -- bash /mnt/c/Users/vdzoo/Projects/jarvis-local/fix-cors.sh >> "%LOG%" 2>&1
+wsl -d Ubuntu-24.04 -u root -- bash /mnt/c/Users/vdzoo/Documents/GitHub/jarvis-app/fix-cors.sh >> "%LOG%" 2>&1
 
 echo. >> "%LOG%"
 echo === Windows-side curl with Tauri origin === >> "%LOG%"
