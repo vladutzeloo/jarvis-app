@@ -15,6 +15,9 @@ import "./brain/brain";
 import "./brain/viz";
 import "./voice/call";
 import "./voice/tts";
+// wow.ts attaches DOM listeners (send / call-notification / streaming class)
+// so it must import *before* settings.ts (which imports its public API).
+import "./world/wow";
 import "./settings/settings";
 import "./chat/models";
 import "./chat/research";
