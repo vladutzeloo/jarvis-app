@@ -75,6 +75,7 @@ interface IndexedDoc {
   path: string;
   rel: string;
   content: string;
+  lowerContent: string;
 }
 
 // ---------------- Tabs ----------------
@@ -1427,7 +1428,7 @@ async function indexVault(): Promise<void> {
     for (const f of files) {
       try {
         const content = await readTextFile(f.path);
-        docs.push({ path: f.path, rel: f.rel, content });
+        docs.push({ path: f.path, rel: f.rel, content, lowerContent: content.toLowerCase() });
       } catch {
         // skip unreadable files
       }
@@ -1461,7 +1462,7 @@ function searchVault(query: string): SearchHit[] {
 
   const hits: SearchHit[] = [];
   for (const doc of vaultIndex) {
-    const lower = doc.content.toLowerCase();
+    const lower = doc.lowerContent;
     const pos = lower.indexOf(q);
     if (pos === -1) continue;
     const lineStart = doc.content.lastIndexOf("\n", pos);
