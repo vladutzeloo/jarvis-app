@@ -357,9 +357,16 @@ function renderResults(suggestions: Suggestion[]) {
     if (s.median_price) stats.appendChild(median);
     stats.appendChild(score);
 
+    const negotiateBtn = document.createElement("button");
+    negotiateBtn.className = "vinted-result-negotiate";
+    negotiateBtn.title = "Suggest a counter-offer";
+    negotiateBtn.textContent = "💬 Negotiate";
+    negotiateBtn.addEventListener("click", () => openNegotiation(s.id));
+
     li.appendChild(verdictBadge);
     li.appendChild(main);
     li.appendChild(stats);
+    li.appendChild(negotiateBtn);
     resultsEl.appendChild(li);
   }
 }
@@ -519,6 +526,145 @@ function formatRelative(epoch: number): string {
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
+}
+
+// ─── negotiation modal ───────────────────────────────────────────────────────
+
+interface NegotiationDraft {
+  tone: "polite" | "direct" | "lowball";
+  text: string;
+}
+
+interface NegotiationResponse {
+  bot_id: string;
+  listing_id: string;
+  title: string;
+  url: string | null;
+  asking: number;
+  median: number;
+  p25: number;
+  comparable_count: number;
+  bucket: string;
+  condition: string | null;
+  target_offer: number;
+  lowball: number;
+  ceiling: number;
+  discount_pct: number;
+  reason: string;
+  drafts: NegotiationDraft[];
+}
+
+const negModal = document.getElementById("vinted-negotiate-modal") as HTMLElement;
+const negBackdrop = document.getElementById("vinted-negotiate-backdrop") as HTMLElement;
+const negCloseBtn = document.getElementById("vinted-negotiate-close") as HTMLButtonElement;
+const negTitle = document.getElementById("vinted-negotiate-title") as HTMLElement;
+const negListingLink = document.getElementById("vinted-negotiate-listing") as HTMLAnchorElement;
+const negLowball = document.getElementById("vinted-negotiate-lowball") as HTMLElement;
+const negTarget = document.getElementById("vinted-negotiate-target") as HTMLElement;
+const negCeiling = document.getElementById("vinted-negotiate-ceiling") as HTMLElement;
+const negDiscount = document.getElementById("vinted-negotiate-discount") as HTMLElement;
+const negContext = document.getElementById("vinted-negotiate-context") as HTMLElement;
+const negReason = document.getElementById("vinted-negotiate-reason") as HTMLElement;
+const negDraftsList = document.getElementById("vinted-negotiate-drafts-list") as HTMLUListElement;
+
+function closeNegotiation() {
+  negModal.classList.add("hidden");
+}
+
+negCloseBtn.addEventListener("click", closeNegotiation);
+negBackdrop.addEventListener("click", closeNegotiation);
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !negModal.classList.contains("hidden")) closeNegotiation();
+});
+
+async function openNegotiation(listingId: string) {
+  const bot = selectedBot();
+  if (!bot) return;
+  // Render the modal in a loading state immediately so the user gets feedback.
+  negModal.classList.remove("hidden");
+  negTitle.textContent = "Negotiation suggestion";
+  negListingLink.textContent = "loading…";
+  negListingLink.removeAttribute("href");
+  negLowball.textContent = "—";
+  negTarget.textContent = "—";
+  negCeiling.textContent = "—";
+  negDiscount.textContent = "";
+  negContext.textContent = "";
+  negReason.textContent = "";
+  negDraftsList.replaceChildren();
+
+  try {
+    const res = await fetch(
+      `${PIPER_BASE}/vinted/negotiate/${encodeURIComponent(bot.id)}/${encodeURIComponent(listingId)}`,
+      { method: "POST" },
+    );
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: res.statusText }));
+      negContext.textContent = `error: ${body.error || res.statusText}`;
+      return;
+    }
+    const n: NegotiationResponse = await res.json();
+    renderNegotiation(n);
+  } catch (e: any) {
+    negContext.textContent = `error: ${e.message || e}`;
+  }
+}
+
+function renderNegotiation(n: NegotiationResponse) {
+  negListingLink.textContent = n.title;
+  if (n.url) {
+    negListingLink.href = n.url;
+  } else {
+    negListingLink.removeAttribute("href");
+  }
+  negLowball.textContent = `€${n.lowball.toFixed(0)}`;
+  negTarget.textContent = `€${n.target_offer.toFixed(0)}`;
+  negCeiling.textContent = `€${n.ceiling.toFixed(0)}`;
+  negDiscount.textContent =
+    n.discount_pct > 0
+      ? `${n.discount_pct.toFixed(0)}% below asking €${n.asking.toFixed(0)}`
+      : `at asking €${n.asking.toFixed(0)}`;
+  const ctxBits: string[] = [
+    `Asking €${n.asking.toFixed(0)}`,
+    `median €${n.median.toFixed(0)}`,
+    `${n.comparable_count} comparable`,
+  ];
+  if (n.condition) ctxBits.push(`condition ${n.condition.replace(/_/g, " ")}`);
+  negContext.textContent = ctxBits.join(" · ");
+  negReason.textContent = n.reason;
+
+  negDraftsList.replaceChildren();
+  for (const draft of n.drafts) {
+    const li = document.createElement("li");
+    li.className = "vinted-negotiate-draft";
+    li.dataset.tone = draft.tone;
+
+    const toneLabel = document.createElement("span");
+    toneLabel.className = "vinted-negotiate-draft-tone";
+    toneLabel.textContent = draft.tone;
+
+    const text = document.createElement("p");
+    text.className = "vinted-negotiate-draft-text";
+    text.textContent = draft.text;
+
+    const copyBtn = document.createElement("button");
+    copyBtn.className = "vinted-negotiate-draft-copy";
+    copyBtn.textContent = "Copy";
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(draft.text);
+        copyBtn.textContent = "Copied ✓";
+        setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
+      } catch {
+        copyBtn.textContent = "Copy failed";
+      }
+    });
+
+    li.appendChild(toneLabel);
+    li.appendChild(text);
+    li.appendChild(copyBtn);
+    negDraftsList.appendChild(li);
+  }
 }
 
 // ─── boot ────────────────────────────────────────────────────────────────────

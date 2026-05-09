@@ -641,6 +641,46 @@
       </div>
     </div>
 
+    <!-- Negotiation modal (Vinted tab) -->
+    <div id="vinted-negotiate-modal" class="vinted-modal hidden" role="dialog" aria-modal="true" aria-labelledby="vinted-negotiate-title">
+      <div class="vinted-modal-backdrop" id="vinted-negotiate-backdrop"></div>
+      <div class="vinted-modal-content">
+        <header class="vinted-modal-header">
+          <div>
+            <h3 id="vinted-negotiate-title">Negotiation suggestion</h3>
+            <a id="vinted-negotiate-listing" class="vinted-modal-listing" href="#" target="_blank" rel="noopener noreferrer"></a>
+          </div>
+          <button id="vinted-negotiate-close" class="vinted-modal-close" title="Close">×</button>
+        </header>
+        <div class="vinted-modal-body">
+          <div class="vinted-negotiate-grid">
+            <div class="vinted-negotiate-tier" data-tier="lowball">
+              <div class="vinted-negotiate-tier-label">Lowball</div>
+              <div class="vinted-negotiate-tier-value" id="vinted-negotiate-lowball">—</div>
+              <div class="vinted-negotiate-tier-hint">Push hard, expect a counter</div>
+            </div>
+            <div class="vinted-negotiate-tier vinted-negotiate-tier-target" data-tier="target">
+              <div class="vinted-negotiate-tier-label">Target offer</div>
+              <div class="vinted-negotiate-tier-value" id="vinted-negotiate-target">—</div>
+              <div class="vinted-negotiate-tier-hint" id="vinted-negotiate-discount"></div>
+            </div>
+            <div class="vinted-negotiate-tier" data-tier="ceiling">
+              <div class="vinted-negotiate-tier-label">Ceiling</div>
+              <div class="vinted-negotiate-tier-value" id="vinted-negotiate-ceiling">—</div>
+              <div class="vinted-negotiate-tier-hint">If they say no, last try</div>
+            </div>
+          </div>
+          <div class="vinted-negotiate-context" id="vinted-negotiate-context"></div>
+          <div class="vinted-negotiate-reason" id="vinted-negotiate-reason"></div>
+
+          <div class="vinted-negotiate-drafts">
+            <div class="vinted-field-label">Draft messages</div>
+            <ul id="vinted-negotiate-drafts-list" class="vinted-negotiate-drafts-list"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Camera + gesture preview (floating, fixed position) -->
     <div id="camera-panel" class="camera-panel hidden">
       <video id="camera-feed" autoplay muted playsinline></video>

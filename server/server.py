@@ -17,6 +17,8 @@ Endpoints:
   DELETE /vinted/bots/<id>   -> {"deleted": true|false}
   POST /vinted/scan/<id>     -> {"suggestions": [...], "summary": {...}}
   POST /vinted/scan-all      -> [{...}, ...]
+  POST /vinted/negotiate/<bot_id>/<listing_id>
+                             -> {"target_offer": ..., "drafts": [...], ...}
 
 Voice path is taken from $JARVIS_VOICE_PATH (default
 ~/jarvis-tts/voices/en_GB-alan-medium.onnx). Listens on 0.0.0.0:5500.
@@ -124,6 +126,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.path.startswith("/vinted/scan/"):
             self._handle_vinted_scan(self.path[len("/vinted/scan/"):])
+            return
+        if self.path.startswith("/vinted/negotiate/"):
+            self._handle_vinted_negotiate(self.path[len("/vinted/negotiate/"):])
             return
         if self.path != "/tts":
             self.send_response(404)
@@ -294,6 +299,24 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json(503, {"error": _VINTED_IMPORT_ERROR})
             return
         self._send_json(200, vinted_runner.scan_all())
+
+    def _handle_vinted_negotiate(self, tail):
+        if vinted_runner is None:
+            self._send_json(503, {"error": _VINTED_IMPORT_ERROR})
+            return
+        # Path tail is "<bot_id>/<listing_id>" — both are URL-encoded by the
+        # client, so split on the first slash and unquote each half.
+        if "/" not in tail:
+            self._send_json(400, {"error": "bad path: expected /vinted/negotiate/<bot_id>/<listing_id>"})
+            return
+        bot_id, listing_id = tail.split("/", 1)
+        from urllib.parse import unquote
+        try:
+            result = vinted_runner.compute_negotiation(unquote(bot_id), unquote(listing_id))
+        except ValueError as e:
+            self._send_json(404, {"error": str(e)})
+            return
+        self._send_json(200, result)
 
     def _send_text(self, status, body):
         encoded = body.encode() if isinstance(body, str) else body

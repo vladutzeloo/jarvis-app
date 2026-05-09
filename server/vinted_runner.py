@@ -251,6 +251,143 @@ def scan_all() -> list[dict[str, Any]]:
     return out
 
 
+# ─── negotiation ──────────────────────────────────────────────────────────────
+
+# How aggressive to negotiate based on where the asking price sits in the
+# distribution of comparable listings. (target_pct = asking * (1 - aggressiveness))
+_AGGRESSIVENESS_BY_BUCKET = {
+    "p25_or_lower": 0.05,   # already a deal — politely ask for a small discount
+    "below_median": 0.15,
+    "near_median":  0.22,
+    "above_median": 0.30,
+    "high_outlier": 0.38,   # >35% above median — there's room
+}
+
+# Used items have variable wear; condition gives extra leverage. Adds to
+# the aggressiveness when computing the target offer.
+_CONDITION_BUMP = {"new": 0.0, "very_good": 0.02, "good": 0.05, "fair": 0.10}
+
+# Floor: never offer below this fraction of asking, no matter what the
+# distribution says. Stops the bot from generating insulting offers.
+_OFFER_FLOOR_PCT = 0.55
+
+
+def compute_negotiation(bot_id: str, listing_id: str) -> dict[str, Any]:
+    """Return target / lowball / ceiling offers + ready-to-paste drafts for
+    a single listing from a bot's last scan. Reads cached scan results
+    rather than re-fetching, so this is fast and stable."""
+    with _lock:
+        bot = get_bot(bot_id)
+    if not bot:
+        raise ValueError(f"bot {bot_id} not found")
+
+    suggestions = bot.get("last_results") or []
+    listing = next((s for s in suggestions if s.get("id") == listing_id), None)
+    if not listing:
+        raise ValueError(f"listing {listing_id} not found in last scan")
+
+    asking = float(listing["price"])
+    prices = sorted(float(s["price"]) for s in suggestions)
+    n = len(prices)
+    median = prices[n // 2] if n else asking
+    p25 = prices[n // 4] if n else asking
+    floor_market = prices[0] if n else asking * _OFFER_FLOOR_PCT
+
+    # Bucketise asking price → aggressiveness
+    if asking <= p25 * 1.05:
+        bucket = "p25_or_lower"
+    elif asking <= median * 0.97:
+        bucket = "below_median"
+    elif asking <= median * 1.08:
+        bucket = "near_median"
+    elif asking <= median * 1.35:
+        bucket = "above_median"
+    else:
+        bucket = "high_outlier"
+    aggressiveness = _AGGRESSIVENESS_BY_BUCKET[bucket]
+
+    cond_bump = _CONDITION_BUMP.get((listing.get("condition") or "").lower(), 0.0)
+
+    target_pct = max(0.0, 1.0 - aggressiveness - cond_bump)
+    target_offer = round(max(asking * target_pct, asking * _OFFER_FLOOR_PCT, floor_market * 0.95), 2)
+    lowball = round(max(asking * (target_pct - 0.10), asking * _OFFER_FLOOR_PCT), 2)
+    ceiling = round(min(asking * (target_pct + 0.06), asking * 0.95), 2)
+
+    discount_pct = (asking - target_offer) / asking * 100 if asking else 0.0
+
+    title = listing.get("title") or "this item"
+    short_title = title if len(title) <= 60 else title[:57].rstrip() + "…"
+
+    drafts = [
+        {
+            "tone": "polite",
+            "text": (
+                f"Hi! I'm interested in your listing — {short_title}. "
+                f"Would you consider €{target_offer:.0f}? "
+                "Ready to buy now if it works for you. Thanks!"
+            ),
+        },
+        {
+            "tone": "direct",
+            "text": (
+                f"Hi, I can offer €{target_offer:.0f} for {short_title}, "
+                "ready to pay immediately. Let me know."
+            ),
+        },
+        {
+            "tone": "lowball",
+            "text": (
+                f"Hello! Any chance you'd accept €{lowball:.0f}? "
+                "Happy to bundle if you have other PC parts listed."
+            ),
+        },
+    ]
+
+    reason = _negotiation_reason(asking, median, bucket, listing.get("condition"))
+
+    return {
+        "bot_id": bot_id,
+        "listing_id": listing_id,
+        "title": title,
+        "url": listing.get("url"),
+        "asking": round(asking, 2),
+        "median": round(median, 2),
+        "p25": round(p25, 2),
+        "comparable_count": n,
+        "bucket": bucket,
+        "condition": listing.get("condition"),
+        "target_offer": target_offer,
+        "lowball": lowball,
+        "ceiling": ceiling,
+        "discount_pct": round(discount_pct, 1),
+        "reason": reason,
+        "drafts": drafts,
+    }
+
+
+def _negotiation_reason(asking: float, median: float, bucket: str, condition: Optional[str]) -> str:
+    bits: list[str] = []
+    if median > 0:
+        delta = (asking - median) / median * 100
+        if abs(delta) < 5:
+            bits.append("asking sits at the median for similar listings")
+        elif delta < 0:
+            bits.append(f"asking is {abs(delta):.0f}% below median")
+        else:
+            bits.append(f"asking is {delta:.0f}% above median")
+    bucket_blurb = {
+        "p25_or_lower": "already a strong price — go gentle",
+        "below_median": "modest room for a small discount",
+        "near_median":  "typical room for ~20% off",
+        "above_median": "clear room to negotiate",
+        "high_outlier": "well overpriced — push hard",
+    }
+    bits.append(bucket_blurb[bucket])
+    if condition in ("good", "fair"):
+        bits.append(f"condition '{condition}' gives extra leverage")
+    return " · ".join(bits)
+
+
 # ─── input validation ─────────────────────────────────────────────────────────
 
 
