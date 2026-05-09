@@ -2115,7 +2115,7 @@ button.action:hover { filter: brightness(1.08); }
 
 .stat-value {
   font-family: var(--font-mono);
-  font-size: 1.875rem;
+  font-size: 26px;
   line-height: 1.1;
   font-weight: 600;
   color: var(--fg);
