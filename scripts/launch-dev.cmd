@@ -1,9 +1,8 @@
 @echo off
-REM JARVIS dev launcher — starts Vite + Tauri in dev mode with hot-reload.
-REM Closing this console window also stops the dev server. Use the desktop
-REM shortcut as your daily entrypoint while iterating on features.
+REM JARVIS dev launcher — Vite + Tauri in dev mode with hot-reload.
+REM Closing this console window also stops the dev server.
 
-cd /d "%~dp0"
+cd /d "%~dp0\.."
 
 echo.
 echo  ======================================================

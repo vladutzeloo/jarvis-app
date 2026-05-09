@@ -1,0 +1,192 @@
+/* Header (HUD-style brand + tabs) and view switching. */
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 10px 18px;
+  background: linear-gradient(180deg, rgba(13, 17, 23, 0.92), rgba(13, 17, 23, 0.78));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+  position: relative;
+  z-index: 10;
+}
+
+header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.5;
+}
+
+.brand {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  font-size: 13px;
+  color: var(--accent);
+  text-shadow: 0 0 18px var(--accent-glow);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.brand::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent), 0 0 4px var(--accent);
+  animation: brand-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes brand-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.55; transform: scale(0.85); }
+}
+
+header.busy .brand::before {
+  animation: brand-pulse-active 0.8s ease-in-out infinite;
+  box-shadow: 0 0 14px var(--accent), 0 0 32px var(--accent), 0 0 60px rgba(92, 217, 255, 0.6);
+}
+
+@keyframes brand-pulse-active {
+  0%, 100% { transform: scale(1.05); opacity: 1; }
+  50%      { transform: scale(0.7); opacity: 0.65; }
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  background: rgba(13, 17, 23, 0.5);
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.tab {
+  background: transparent;
+  color: var(--fg-muted);
+  border: 0;
+  padding: 6px 16px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease, transform 0.1s ease;
+}
+
+.tab:hover {
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tab.active {
+  color: var(--accent);
+  background: linear-gradient(180deg, var(--accent-soft), rgba(92, 217, 255, 0.06));
+  box-shadow: inset 0 0 0 1px var(--accent-soft), 0 0 12px rgba(92, 217, 255, 0.18);
+}
+
+.stats {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  padding: 5px 10px;
+  background: rgba(13, 17, 23, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  letter-spacing: 0.02em;
+}
+
+.view {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  animation: view-fade 0.22s ease;
+}
+
+.view.active {
+  display: flex;
+}
+
+@keyframes view-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 40px;
+  color: var(--fg-muted);
+}
+
+.placeholder h2 {
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.placeholder p {
+  font-size: 14px;
+  max-width: 460px;
+  text-align: center;
+  line-height: 1.65;
+}
+
+.placeholder .hint {
+  font-size: 12px;
+  color: var(--fg-dim);
+  font-style: italic;
+}
+
+button.action {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #06090f;
+  border: 0;
+  border-radius: 8px;
+  padding: 11px 24px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(92, 217, 255, 0.25);
+}
+
+button.action:hover { filter: brightness(1.08); }
+
+.ghost {
+  background: rgba(31, 38, 48, 0.7);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.ghost:hover { border-color: var(--accent); }

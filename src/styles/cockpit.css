@@ -1,0 +1,94 @@
+/* Cockpit HUD bar — CPU/RAM/GPU/VRAM/temp/power/fan + loaded model. */
+
+.cockpit {
+  display: flex;
+  align-items: stretch;
+  gap: 1px;
+  padding: 6px 14px;
+  background: linear-gradient(180deg, rgba(13, 17, 23, 0.85), rgba(13, 17, 23, 0.7));
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  user-select: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.cockpit::-webkit-scrollbar { display: none; }
+
+.cockpit-cell {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  align-items: center;
+  padding: 4px 12px;
+  border-right: 1px solid var(--border);
+  min-width: 92px;
+  position: relative;
+}
+
+.cockpit-cell:last-child { border-right: 0; }
+
+.cockpit-label {
+  grid-column: 1;
+  grid-row: 1;
+  color: var(--fg-dim);
+  font-weight: 700;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.cockpit-value {
+  grid-column: 2;
+  grid-row: 1;
+  color: var(--accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+  text-shadow: 0 0 6px rgba(92, 217, 255, 0.25);
+}
+
+.cockpit-bar {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  height: 2px;
+  background: rgba(125, 142, 168, 0.18);
+  border-radius: 1px;
+  overflow: hidden;
+  margin-top: 3px;
+}
+
+.cockpit-bar-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+  border-radius: 1px;
+  transition: width 0.5s ease;
+  box-shadow: 0 0 6px var(--accent-glow);
+}
+
+.cockpit-cell.alarm .cockpit-value { color: var(--error); text-shadow: 0 0 6px rgba(248, 81, 73, 0.4); }
+.cockpit-cell.alarm .cockpit-bar-fill {
+  background: linear-gradient(90deg, var(--error), #ff7b6b);
+  box-shadow: 0 0 6px rgba(248, 81, 73, 0.5);
+  animation: alarm-flicker 1.2s ease-in-out infinite;
+}
+
+@keyframes alarm-flicker {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
+.cockpit-loaded {
+  margin-left: auto;
+  min-width: 180px;
+}
+
+.cockpit-loaded .cockpit-value {
+  color: var(--fg);
+  font-size: 10.5px;
+}
