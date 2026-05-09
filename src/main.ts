@@ -26,6 +26,7 @@ import "./voice/stt";
 import "./workspace/workspace";
 import "./agents/agents";
 import "./vinted/vinted";
+import "./radio/radio";
 import "./gestures/gestures";
 import "./gamify/hub";
 
@@ -35,6 +36,7 @@ import { refreshBrainViz } from "./brain/viz";
 import { initBrainViz3D } from "./brain/viz3d";
 import { initWorld } from "./world/world";
 import { initAmbient3D } from "./three/ambient";
+import { initRadio } from "./radio/radio";
 
 ensureModelsLoaded();
 if (getVaultPath()) indexVault().then(refreshBrainViz).catch(() => {});
@@ -42,3 +44,4 @@ if (getVaultPath()) indexVault().then(refreshBrainViz).catch(() => {});
 initAmbient3D();
 initBrainViz3D();
 void initWorld();
+initRadio();

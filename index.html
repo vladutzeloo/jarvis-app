@@ -7,50 +7,35 @@
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
-    <!-- ============================================================
-         Ambient 3D layer — slow drifting starfield behind the SVG.
-         Drawn first so the circuit-board SVG paints on top. Optional;
-         can be disabled via window.__jarvisAmbient.toggle().
-         ============================================================ -->
     <canvas id="ambient-canvas" class="ambient-canvas" aria-hidden="true"></canvas>
 
-    <!-- ============================================================
-         Background — animated circuit board, sits behind everything
-         ============================================================ -->
     <div class="bg-circuit" aria-hidden="true">
       <svg viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <!-- fine grid -->
           <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
             <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(92,217,255,0.06)" stroke-width="1"/>
           </pattern>
-          <!-- via dots -->
           <pattern id="vias" width="80" height="80" patternUnits="userSpaceOnUse">
             <circle cx="40" cy="40" r="1.5" fill="rgba(92,217,255,0.22)"/>
           </pattern>
-          <!-- hex tile -->
           <pattern id="hex" width="60" height="52" patternUnits="userSpaceOnUse" patternTransform="translate(0,0)">
             <polygon points="30,2 56,16 56,42 30,56 4,42 4,16" fill="none" stroke="rgba(92,217,255,0.05)" stroke-width="1"/>
           </pattern>
-          <!-- glow gradient for traveling pulses -->
           <radialGradient id="pulseGlow">
             <stop offset="0%" stop-color="rgba(92,217,255,1)"/>
             <stop offset="60%" stop-color="rgba(92,217,255,0.4)"/>
             <stop offset="100%" stop-color="rgba(92,217,255,0)"/>
           </radialGradient>
-          <!-- soft vignette -->
           <radialGradient id="vignette" cx="50%" cy="50%" r="75%">
             <stop offset="50%" stop-color="rgba(0,0,0,0)"/>
             <stop offset="100%" stop-color="rgba(0,0,0,0.5)"/>
           </radialGradient>
         </defs>
 
-        <!-- base layers -->
         <rect width="100%" height="100%" fill="url(#grid)"/>
         <rect width="100%" height="100%" fill="url(#hex)"/>
         <rect width="100%" height="100%" fill="url(#vias)"/>
 
-        <!-- circuit traces — hand-drawn, give the board a designed feel -->
         <g class="trace-layer" stroke="rgba(92,217,255,0.18)" stroke-width="1.4" fill="none" stroke-linecap="square">
           <path d="M 80 80 H 320 V 200 H 540 V 360 H 880" />
           <path d="M 1520 120 H 1280 V 260 H 1080 V 380 H 920" />
@@ -62,7 +47,6 @@
           <path d="M 1080 540 H 1260 V 720 H 1100" />
         </g>
 
-        <!-- nodes — small junctions where traces meet -->
         <g class="node-layer">
           <circle cx="320" cy="80"  r="3" />
           <circle cx="540" cy="200" r="3" />
@@ -82,7 +66,6 @@
           <circle cx="1260" cy="540" r="3" />
         </g>
 
-        <!-- traveling pulses — circles that follow the longest traces -->
         <g class="pulse-layer">
           <circle r="3" fill="url(#pulseGlow)">
             <animateMotion dur="9s" repeatCount="indefinite"
@@ -102,113 +85,6 @@
           </circle>
         </g>
 
-        <!-- corner HUD reticles -->
-        <g class="reticle-tl" transform="translate(80,80)" stroke="rgba(92,217,255,0.45)" fill="none" stroke-width="1.2">
-          <circle r="20" stroke-dasharray="4 4"/>
-          <circle r="8"/>
-          <line x1="-30" y1="0" x2="-12" y2="0"/>
-          <line x1="12" y1="0" x2="30" y2="0"/>
-          <line x1="0" y1="-30" x2="0" y2="-12"/>
-          <line x1="0" y1="12" x2="0" y2="30"/>
-        </g>
-        <g class="reticle-br" transform="translate(1520,920)" stroke="rgba(92,217,255,0.45)" fill="none" stroke-width="1.2">
-          <circle r="24" stroke-dasharray="3 5"/>
-          <circle r="10" stroke-dasharray="2 3"/>
-          <line x1="-34" y1="0" x2="-14" y2="0"/>
-          <line x1="14" y1="0" x2="34" y2="0"/>
-        </g>
-
-        <!-- Cooling fans — rotate continuously -->
-        <g class="fan fan-1" transform="translate(1380, 220)">
-          <!-- square housing with rounded screws at corners -->
-          <rect x="-90" y="-90" width="180" height="180" rx="14" fill="none" stroke="rgba(92,217,255,0.16)" stroke-width="1.2"/>
-          <circle cx="-78" cy="-78" r="3" fill="rgba(92,217,255,0.3)"/>
-          <circle cx="78"  cy="-78" r="3" fill="rgba(92,217,255,0.3)"/>
-          <circle cx="-78" cy="78"  r="3" fill="rgba(92,217,255,0.3)"/>
-          <circle cx="78"  cy="78"  r="3" fill="rgba(92,217,255,0.3)"/>
-          <!-- inner ring -->
-          <circle r="78" fill="none" stroke="rgba(92,217,255,0.18)" stroke-width="1"/>
-          <circle r="68" fill="none" stroke="rgba(92,217,255,0.10)" stroke-width="1"/>
-          <!-- spinning blades -->
-          <g class="fan-blades">
-            <path d="M -8,-14 C -22,-28 -32,-58 0,-64 C 32,-58 22,-28 8,-14 Z"/>
-            <path d="M -8,-14 C -22,-28 -32,-58 0,-64 C 32,-58 22,-28 8,-14 Z" transform="rotate(51.4286)"/>
-            <path d="M -8,-14 C -22,-28 -32,-58 0,-64 C 32,-58 22,-28 8,-14 Z" transform="rotate(102.8571)"/>
-            <path d="M -8,-14 C -22,-28 -32,-58 0,-64 C 32,-58 22,-28 8,-14 Z" transform="rotate(154.2857)"/>
-            <path d="M -8,-14 C -22,-28 -32,-58 0,-64 C 32,-58 22,-28 8,-14 Z" transform="rotate(205.7143)"/>
-            <path d="M -8,-14 C -22,-28 -32,-58 0,-64 C 32,-58 22,-28 8,-14 Z" transform="rotate(257.1429)"/>
-            <path d="M -8,-14 C -22,-28 -32,-58 0,-64 C 32,-58 22,-28 8,-14 Z" transform="rotate(308.5714)"/>
-          </g>
-          <!-- hub -->
-          <circle r="14" fill="rgba(92,217,255,0.18)" stroke="rgba(92,217,255,0.5)" stroke-width="1.4"/>
-          <circle r="3" fill="rgba(92,217,255,0.9)"/>
-          <text x="-30" y="105" font-family="JetBrains Mono, Consolas, monospace" font-size="9" fill="rgba(92,217,255,0.45)" letter-spacing="2">FAN A · 1800 RPM</text>
-        </g>
-
-        <g class="fan fan-2" transform="translate(140, 540)">
-          <rect x="-110" y="-110" width="220" height="220" rx="16" fill="none" stroke="rgba(92,217,255,0.14)" stroke-width="1.2"/>
-          <circle cx="-95" cy="-95" r="3" fill="rgba(92,217,255,0.3)"/>
-          <circle cx="95"  cy="-95" r="3" fill="rgba(92,217,255,0.3)"/>
-          <circle cx="-95" cy="95"  r="3" fill="rgba(92,217,255,0.3)"/>
-          <circle cx="95"  cy="95"  r="3" fill="rgba(92,217,255,0.3)"/>
-          <circle r="96" fill="none" stroke="rgba(92,217,255,0.16)" stroke-width="1"/>
-          <circle r="84" fill="none" stroke="rgba(92,217,255,0.08)" stroke-width="1"/>
-          <g class="fan-blades">
-            <path d="M -10,-16 C -28,-32 -40,-72 0,-78 C 40,-72 28,-32 10,-16 Z"/>
-            <path d="M -10,-16 C -28,-32 -40,-72 0,-78 C 40,-72 28,-32 10,-16 Z" transform="rotate(51.4286)"/>
-            <path d="M -10,-16 C -28,-32 -40,-72 0,-78 C 40,-72 28,-32 10,-16 Z" transform="rotate(102.8571)"/>
-            <path d="M -10,-16 C -28,-32 -40,-72 0,-78 C 40,-72 28,-32 10,-16 Z" transform="rotate(154.2857)"/>
-            <path d="M -10,-16 C -28,-32 -40,-72 0,-78 C 40,-72 28,-32 10,-16 Z" transform="rotate(205.7143)"/>
-            <path d="M -10,-16 C -28,-32 -40,-72 0,-78 C 40,-72 28,-32 10,-16 Z" transform="rotate(257.1429)"/>
-            <path d="M -10,-16 C -28,-32 -40,-72 0,-78 C 40,-72 28,-32 10,-16 Z" transform="rotate(308.5714)"/>
-          </g>
-          <circle r="16" fill="rgba(92,217,255,0.18)" stroke="rgba(92,217,255,0.5)" stroke-width="1.4"/>
-          <circle r="3.5" fill="rgba(92,217,255,0.9)"/>
-          <text x="-32" y="125" font-family="JetBrains Mono, Consolas, monospace" font-size="9" fill="rgba(92,217,255,0.45)" letter-spacing="2">FAN B · 1200 RPM</text>
-        </g>
-
-        <g class="fan fan-3" transform="translate(820, 880)">
-          <rect x="-72" y="-72" width="144" height="144" rx="12" fill="none" stroke="rgba(92,217,255,0.14)" stroke-width="1.2"/>
-          <circle cx="-60" cy="-60" r="2.5" fill="rgba(92,217,255,0.3)"/>
-          <circle cx="60"  cy="-60" r="2.5" fill="rgba(92,217,255,0.3)"/>
-          <circle cx="-60" cy="60"  r="2.5" fill="rgba(92,217,255,0.3)"/>
-          <circle cx="60"  cy="60"  r="2.5" fill="rgba(92,217,255,0.3)"/>
-          <circle r="62" fill="none" stroke="rgba(92,217,255,0.16)" stroke-width="1"/>
-          <circle r="52" fill="none" stroke="rgba(92,217,255,0.08)" stroke-width="1"/>
-          <g class="fan-blades">
-            <path d="M -7,-12 C -18,-22 -26,-48 0,-52 C 26,-48 18,-22 7,-12 Z"/>
-            <path d="M -7,-12 C -18,-22 -26,-48 0,-52 C 26,-48 18,-22 7,-12 Z" transform="rotate(51.4286)"/>
-            <path d="M -7,-12 C -18,-22 -26,-48 0,-52 C 26,-48 18,-22 7,-12 Z" transform="rotate(102.8571)"/>
-            <path d="M -7,-12 C -18,-22 -26,-48 0,-52 C 26,-48 18,-22 7,-12 Z" transform="rotate(154.2857)"/>
-            <path d="M -7,-12 C -18,-22 -26,-48 0,-52 C 26,-48 18,-22 7,-12 Z" transform="rotate(205.7143)"/>
-            <path d="M -7,-12 C -18,-22 -26,-48 0,-52 C 26,-48 18,-22 7,-12 Z" transform="rotate(257.1429)"/>
-            <path d="M -7,-12 C -18,-22 -26,-48 0,-52 C 26,-48 18,-22 7,-12 Z" transform="rotate(308.5714)"/>
-          </g>
-          <circle r="12" fill="rgba(92,217,255,0.18)" stroke="rgba(92,217,255,0.5)" stroke-width="1.4"/>
-          <circle r="2.5" fill="rgba(92,217,255,0.9)"/>
-          <text x="-32" y="92" font-family="JetBrains Mono, Consolas, monospace" font-size="9" fill="rgba(92,217,255,0.45)" letter-spacing="2">FAN C · 2400 RPM</text>
-        </g>
-
-        <!-- diagonal scaffolding lines for depth -->
-        <g stroke="rgba(92,217,255,0.07)" stroke-width="1" fill="none">
-          <line x1="0" y1="60" x2="1600" y2="60"/>
-          <line x1="0" y1="940" x2="1600" y2="940"/>
-          <line x1="60" y1="0" x2="60" y2="1000"/>
-          <line x1="1540" y1="0" x2="1540" y2="1000"/>
-        </g>
-
-        <!-- HUD micro-text in monospace, subtle -->
-        <g fill="rgba(92,217,255,0.35)" font-family="JetBrains Mono, Consolas, monospace" font-size="10" letter-spacing="2">
-          <text x="86" y="120">SYS//ONLINE</text>
-          <text x="1400" y="156">CH:01</text>
-          <text x="1400" y="172">CH:02</text>
-          <text x="1400" y="188">CH:03</text>
-          <text x="86" y="780">PWR ◯</text>
-          <text x="86" y="800">NET ◯</text>
-          <text x="86" y="820">GPU ◯</text>
-        </g>
-
-        <!-- vignette overlay -->
         <rect width="100%" height="100%" fill="url(#vignette)"/>
       </svg>
     </div>
@@ -221,6 +97,7 @@
         <button class="tab" data-tab="workspace">Workspace</button>
         <button class="tab" data-tab="agents">Agents</button>
         <button class="tab" data-tab="vinted">Vinted</button>
+        <button class="tab" data-tab="radio">Radio</button>
         <button class="tab" data-tab="brain">Brain</button>
         <button class="tab active" data-tab="world">World</button>
         <button class="tab" data-tab="isocity">City</button>
@@ -229,35 +106,34 @@
       <div id="stats" class="stats"></div>
     </header>
 
-    <!-- Cockpit HUD bar — always visible, live system + token stats -->
     <div id="cockpit" class="cockpit">
       <div class="cockpit-cell" data-key="cpu" title="CPU usage">
         <span class="cockpit-label">CPU</span>
-        <span class="cockpit-value">—</span>
+        <span class="cockpit-value">-</span>
         <span class="cockpit-bar"><span class="cockpit-bar-fill"></span></span>
       </div>
       <div class="cockpit-cell" data-key="ram" title="Memory used / total">
         <span class="cockpit-label">RAM</span>
-        <span class="cockpit-value">—</span>
+        <span class="cockpit-value">-</span>
         <span class="cockpit-bar"><span class="cockpit-bar-fill"></span></span>
       </div>
       <div class="cockpit-cell" data-key="gpu" title="GPU utilisation">
         <span class="cockpit-label">GPU</span>
-        <span class="cockpit-value">—</span>
+        <span class="cockpit-value">-</span>
         <span class="cockpit-bar"><span class="cockpit-bar-fill"></span></span>
       </div>
       <div class="cockpit-cell" data-key="vram" title="VRAM used / total">
         <span class="cockpit-label">VRAM</span>
-        <span class="cockpit-value">—</span>
+        <span class="cockpit-value">-</span>
         <span class="cockpit-bar"><span class="cockpit-bar-fill"></span></span>
       </div>
       <div class="cockpit-cell" data-key="temp" title="GPU temperature">
         <span class="cockpit-label">TEMP</span>
-        <span class="cockpit-value">—</span>
+        <span class="cockpit-value">-</span>
       </div>
       <div class="cockpit-cell" data-key="power" title="GPU power draw">
         <span class="cockpit-label">PWR</span>
-        <span class="cockpit-value">—</span>
+        <span class="cockpit-value">-</span>
       </div>
       <div class="cockpit-cell" data-key="tokens-session" title="Tokens this session">
         <span class="cockpit-label">SESS</span>
@@ -269,7 +145,7 @@
       </div>
       <div class="cockpit-cell cockpit-loaded" data-key="loaded" title="Currently loaded Ollama model">
         <span class="cockpit-label">LOADED</span>
-        <span class="cockpit-value">—</span>
+        <span class="cockpit-value">-</span>
       </div>
     </div>
 
@@ -278,7 +154,6 @@
       <!-- Body rendered by src/gamify/hub.ts -->
     </section>
 
-    <!-- Chat tab -->
     <section class="view" data-view="chat">
       <div class="toolbar">
         <select id="model-picker" title="Model"></select>
@@ -290,30 +165,29 @@
         <button id="camera-toggle" aria-label="Toggle camera" title="Toggle camera + gestures">📹</button>
         <span id="tts-engine" class="tts-engine" title="Active speech engine">🌐 Web Speech</span>
         <select id="tts-style" title="JARVIS voice style">
-          <option value="alan">Alan — proper</option>
-          <option value="narrator">Narrator — deeper</option>
-          <option value="orc">Orc — gravelly</option>
+          <option value="alan">Alan - proper</option>
+          <option value="narrator">Narrator - deeper</option>
+          <option value="orc">Orc - gravelly</option>
         </select>
-        <select id="voice-picker" title="Fallback voice (used when Piper offline)"></select>
-        <button id="stop-speaking" title="Stop speaking" class="hidden">⏹</button>
+        <select id="voice-picker" title="Fallback voice"></select>
+        <button id="stop-speaking" title="Stop speaking" class="hidden">Stop</button>
       </div>
       <main id="chat" class="chat"></main>
       <footer class="chat-footer">
-        <textarea id="input" placeholder="Ask JARVIS — or click the mic..." rows="2" autofocus></textarea>
-        <button id="mic" title="Dictate (click to start/stop)">🎙</button>
+        <textarea id="input" placeholder="Ask JARVIS - or click the mic..." rows="2" autofocus></textarea>
+        <button id="mic" title="Dictate (click to start/stop)">Mic</button>
         <button id="send">Send</button>
       </footer>
     </section>
 
-    <!-- Workspace tab -->
     <section class="view" data-view="workspace">
       <div class="ws-toolbar">
-        <button id="ws-open-folder" class="ghost" title="Open folder">📁 Open</button>
+        <button id="ws-open-folder" class="ghost" title="Open folder">Open</button>
         <span id="ws-folder-path" class="ws-folder-path">No folder open</span>
         <span id="ws-file-info" class="ws-file-info"></span>
         <button id="ws-save" class="ghost" title="Save (Ctrl+S)" disabled>Save</button>
         <button id="ws-revert" class="ghost" title="Revert unsaved changes" disabled>Revert</button>
-        <span id="ws-dirty" class="ws-dirty hidden">●</span>
+        <span id="ws-dirty" class="ws-dirty hidden">*</span>
       </div>
       <div class="ws-body">
         <aside id="ws-tree" class="ws-tree">
@@ -325,17 +199,16 @@
       </div>
     </section>
 
-    <!-- Agents tab — ruflo multi-agent runner -->
     <section class="view" data-view="agents">
       <div class="agents-toolbar">
         <span class="agents-status" id="agents-status" title="Bridge status">
           <span class="agents-status-dot"></span>
-          <span class="agents-status-text">probing…</span>
+          <span class="agents-status-text">probing...</span>
         </span>
         <span class="agents-version" id="agents-version"></span>
         <span class="agents-spacer"></span>
-        <button id="agents-clear-console" class="ghost" title="Clear output">⌫ Clear</button>
-        <button id="agents-cancel" class="ghost" title="Cancel running job" disabled>⏹ Cancel</button>
+        <button id="agents-clear-console" class="ghost" title="Clear output">Clear</button>
+        <button id="agents-cancel" class="ghost" title="Cancel running job" disabled>Cancel</button>
       </div>
       <div class="agents-body">
         <aside class="agents-rail">
@@ -363,7 +236,7 @@
               </span>
             </label>
             <div class="agents-form-actions">
-              <button type="submit" class="agents-run" id="agents-run">▶ Run</button>
+              <button type="submit" class="agents-run" id="agents-run">Run</button>
               <span class="agents-job-id" id="agents-job-id"></span>
             </div>
           </form>
@@ -372,17 +245,16 @@
       </div>
     </section>
 
-    <!-- Vinted tab — multi-bot Vinted PC-parts hunter -->
     <section class="view" data-view="vinted">
       <div class="vinted-toolbar">
         <span class="vinted-status" id="vinted-status" title="Bridge status">
           <span class="vinted-status-dot"></span>
-          <span class="vinted-status-text">probing…</span>
+          <span class="vinted-status-text">probing...</span>
         </span>
         <span class="vinted-version" id="vinted-version"></span>
         <span class="vinted-spacer"></span>
-        <button id="vinted-scan-all" class="ghost" title="Scan every bot in sequence">⟳ Scan all</button>
-        <button id="vinted-new" class="vinted-primary" title="Create a new bot">＋ New bot</button>
+        <button id="vinted-scan-all" class="ghost" title="Scan every bot in sequence">Scan all</button>
+        <button id="vinted-new" class="vinted-primary" title="Create a new bot">+ New bot</button>
       </div>
       <div class="vinted-body">
         <aside class="vinted-rail">
@@ -396,7 +268,6 @@
         </aside>
 
         <div class="vinted-main">
-          <!-- Editor (shown when creating or editing a bot) -->
           <form class="vinted-editor hidden" id="vinted-editor" autocomplete="off">
             <div class="vinted-editor-header">
               <span class="vinted-editor-title" id="vinted-editor-title">New bot</span>
@@ -420,11 +291,11 @@
                 <select id="vinted-form-condition"></select>
               </label>
               <label class="vinted-field">
-                <span class="vinted-field-label">Min € (optional)</span>
+                <span class="vinted-field-label">Min EUR (optional)</span>
                 <input id="vinted-form-min" type="number" min="0" max="100000" step="1" placeholder="0">
               </label>
               <label class="vinted-field">
-                <span class="vinted-field-label">Max € (optional)</span>
+                <span class="vinted-field-label">Max EUR (optional)</span>
                 <input id="vinted-form-max" type="number" min="0" max="100000" step="1" placeholder="500">
               </label>
               <label class="vinted-field">
@@ -438,17 +309,16 @@
             </div>
           </form>
 
-          <!-- Detail (shown when a bot is selected) -->
           <section class="vinted-detail hidden" id="vinted-detail">
             <header class="vinted-detail-header">
               <div>
-                <h2 id="vinted-detail-name">—</h2>
+                <h2 id="vinted-detail-name">-</h2>
                 <div class="vinted-detail-meta" id="vinted-detail-meta"></div>
               </div>
               <div class="vinted-detail-actions">
-                <button id="vinted-edit" class="ghost" title="Edit this bot">✎ Edit</button>
-                <button id="vinted-delete" class="ghost vinted-danger" title="Delete this bot">🗑 Delete</button>
-                <button id="vinted-scan" class="vinted-primary" title="Run a scan now">▶ Scan</button>
+                <button id="vinted-edit" class="ghost" title="Edit this bot">Edit</button>
+                <button id="vinted-delete" class="ghost vinted-danger" title="Delete this bot">Delete</button>
+                <button id="vinted-scan" class="vinted-primary" title="Run a scan now">Scan</button>
               </div>
             </header>
 
@@ -471,9 +341,8 @@
             <ul class="vinted-results" id="vinted-results"></ul>
           </section>
 
-          <!-- Empty state -->
           <div class="vinted-empty" id="vinted-empty">
-            <div class="vinted-empty-icon">🤖</div>
+            <div class="vinted-empty-icon">.</div>
             <div class="vinted-empty-title">No bot selected</div>
             <div class="vinted-empty-hint">
               Pick a bot from the rail or click <strong>New bot</strong> to
@@ -484,16 +353,142 @@
       </div>
     </section>
 
-    <!-- Brain tab -->
+    <!-- Radio tab - DJ-style station + deck UI -->
+    <section class="view" data-view="radio">
+      <div class="radio-pane">
+        <aside class="radio-rail" id="radio-rail">
+          <div class="radio-rail-header">
+            <span class="radio-rail-label">STATIONS</span>
+            <span class="radio-rail-sub">via Audius</span>
+          </div>
+          <ul class="radio-stations" id="radio-stations"></ul>
+          <div class="radio-rail-search">
+            <input id="radio-search-input" type="text" placeholder="search genre / artist..." spellcheck="false" />
+            <button id="radio-search-btn" class="ghost" title="Search">Go</button>
+          </div>
+          <div class="radio-rail-tip">
+            Tip: try <em>say "play synthwave"</em> or <em>show open palm to pause</em>.
+          </div>
+        </aside>
+
+        <main class="radio-main">
+          <section class="radio-deck">
+            <div class="radio-vinyl-wrap">
+              <div class="radio-vinyl" id="radio-vinyl" data-spinning="false">
+                <div class="radio-vinyl-art" id="radio-vinyl-art"></div>
+                <div class="radio-vinyl-rings"></div>
+                <div class="radio-vinyl-hub"></div>
+              </div>
+              <div class="radio-arm" id="radio-arm" data-active="false">
+                <div class="radio-arm-base"></div>
+                <div class="radio-arm-bar"></div>
+                <div class="radio-arm-head"></div>
+              </div>
+            </div>
+
+            <div class="radio-now">
+              <div class="radio-now-status">
+                <span class="radio-now-dot" id="radio-now-dot"></span>
+                <span class="radio-now-status-text" id="radio-now-status">READY</span>
+                <span class="radio-now-station" id="radio-now-station">- no station -</span>
+              </div>
+              <div class="radio-now-title" id="radio-now-title">Pick a station to start spinning</div>
+              <div class="radio-now-artist" id="radio-now-artist">JARVIS - DJ-7</div>
+
+              <div class="radio-spectrum" id="radio-spectrum" aria-hidden="true"></div>
+
+              <div class="radio-progress">
+                <span class="radio-progress-time" id="radio-progress-cur">0:00</span>
+                <div class="radio-progress-bar" id="radio-progress-bar">
+                  <div class="radio-progress-fill" id="radio-progress-fill"></div>
+                  <div class="radio-progress-handle" id="radio-progress-handle"></div>
+                </div>
+                <span class="radio-progress-time" id="radio-progress-tot">0:00</span>
+              </div>
+
+              <div class="radio-transport">
+                <button class="radio-tx" id="radio-prev"  title="Previous">&#9198;</button>
+                <button class="radio-tx radio-tx-big" id="radio-play" title="Play / pause">&#9654;</button>
+                <button class="radio-tx" id="radio-next"  title="Next">&#9197;</button>
+                <button class="radio-tx" id="radio-shuffle" title="Shuffle picks" aria-pressed="true">&#128256;</button>
+                <button class="radio-tx" id="radio-record" title="Mark this track">&#9733;</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="radio-mixer">
+            <div class="radio-knob-group">
+              <div class="radio-knob" data-knob="vol">
+                <div class="radio-knob-dial" id="radio-knob-vol">
+                  <span class="radio-knob-mark"></span>
+                </div>
+                <span class="radio-knob-label">VOLUME</span>
+                <span class="radio-knob-value" id="radio-knob-vol-val">70</span>
+              </div>
+              <div class="radio-knob" data-knob="bass">
+                <div class="radio-knob-dial" id="radio-knob-bass">
+                  <span class="radio-knob-mark"></span>
+                </div>
+                <span class="radio-knob-label">BASS</span>
+                <span class="radio-knob-value" id="radio-knob-bass-val">0 dB</span>
+              </div>
+              <div class="radio-knob" data-knob="mid">
+                <div class="radio-knob-dial" id="radio-knob-mid">
+                  <span class="radio-knob-mark"></span>
+                </div>
+                <span class="radio-knob-label">MID</span>
+                <span class="radio-knob-value" id="radio-knob-mid-val">0 dB</span>
+              </div>
+              <div class="radio-knob" data-knob="treble">
+                <div class="radio-knob-dial" id="radio-knob-treble">
+                  <span class="radio-knob-mark"></span>
+                </div>
+                <span class="radio-knob-label">TREBLE</span>
+                <span class="radio-knob-value" id="radio-knob-treble-val">0 dB</span>
+              </div>
+            </div>
+
+            <div class="radio-crossfader">
+              <span class="radio-crossfader-label">CROSSFADE A - B</span>
+              <input id="radio-crossfader" type="range" min="0" max="100" value="50" />
+              <div class="radio-crossfader-marks"><span></span><span></span><span></span></div>
+            </div>
+
+            <div class="radio-mic-cam">
+              <button id="radio-voice-cmd" class="radio-modal-btn" title="Toggle voice commands (radio)">
+                <span class="radio-modal-icon">&#127908;</span>
+                <span class="radio-modal-text">VOICE</span>
+                <span class="radio-modal-sub" id="radio-voice-sub">off</span>
+              </button>
+              <button id="radio-camera-cmd" class="radio-modal-btn" title="Toggle camera-gesture commands (radio)">
+                <span class="radio-modal-icon">&#128249;</span>
+                <span class="radio-modal-text">CAMERA</span>
+                <span class="radio-modal-sub" id="radio-camera-sub">off</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="radio-queue">
+            <div class="radio-queue-header">
+              <span class="radio-queue-label">UP NEXT</span>
+              <span class="radio-queue-station" id="radio-queue-station"></span>
+            </div>
+            <ul class="radio-queue-list" id="radio-queue-list">
+              <li class="radio-queue-empty">Pick a station - the auto-DJ will queue tracks here.</li>
+            </ul>
+          </section>
+        </main>
+      </div>
+    </section>
+
     <section class="view" data-view="brain">
       <div class="brain-pane">
         <div class="brain-header">
-          <input id="brain-search" placeholder="Search your knowledge base…" />
+          <input id="brain-search" placeholder="Search your knowledge base..." />
           <button id="brain-viz-mode" class="ghost" title="Switch to 3D viz">3D</button>
-          <button id="brain-settings" class="ghost" title="Configure vault">⚙</button>
+          <button id="brain-settings" class="ghost" title="Configure vault">Settings</button>
         </div>
 
-        <!-- Brain visualization — neural network style -->
         <div class="brain-viz">
           <svg class="brain-viz-svg" viewBox="0 0 460 280" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -503,21 +498,16 @@
                 <stop offset="100%" stop-color="rgba(92,217,255,0)" />
               </radialGradient>
             </defs>
-            <!-- sonar rings -->
             <circle class="brain-sonar" cx="230" cy="140" r="40" />
             <circle class="brain-sonar brain-sonar-2" cx="230" cy="140" r="40" />
             <circle class="brain-sonar brain-sonar-3" cx="230" cy="140" r="40" />
-            <!-- static rings (orbital lines) -->
             <circle class="brain-orbit" cx="230" cy="140" r="48"/>
             <circle class="brain-orbit" cx="230" cy="140" r="78"/>
             <circle class="brain-orbit" cx="230" cy="140" r="108"/>
             <circle class="brain-orbit" cx="230" cy="140" r="132"/>
-            <!-- core -->
             <circle class="brain-core-glow" cx="230" cy="140" r="22" fill="url(#brain-core-grad)"/>
             <circle class="brain-core" cx="230" cy="140" r="9"/>
-            <!-- nodes filled in by JS -->
             <g class="brain-nodes"></g>
-            <!-- firing pulses (small fading dots) drawn dynamically by JS -->
             <g class="brain-pulses"></g>
           </svg>
           <canvas id="brain-viz-3d" class="brain-viz-3d" aria-hidden="true"></canvas>
@@ -548,13 +538,11 @@
           </div>
         </div>
         <div class="world-hint" id="world-hint">
-          Drag to orbit · click NPC to launch · click brain for Obsidian · click vault for finances · click empty space to fire
+          Drag to orbit - click NPC to launch - click brain for Obsidian - click vault for finances - click empty space to fire
         </div>
 
-        <!-- Money vault HUD overlay (modal-ish; built by src/world/vault.ts) -->
         <div id="vault-hud" class="vault-hud hidden" aria-hidden="true"></div>
 
-        <!-- DJ "now playing" dock (bottom-right; built by src/world/dj.ts) -->
         <div id="dj-dock" class="dj-dock hidden" aria-hidden="true"></div>
 
         <!-- Audio controls (top-right; built by src/world/audio-hud.ts) -->
@@ -580,9 +568,9 @@
       <div class="settings-section">
         <div class="settings-section-label">Sampling preset</div>
         <div class="settings-presets">
-          <button class="preset-btn" data-preset="focused" title="Deterministic — code, factual">Focused</button>
+          <button class="preset-btn" data-preset="focused" title="Deterministic">Focused</button>
           <button class="preset-btn" data-preset="balanced" title="Default chat">Balanced</button>
-          <button class="preset-btn" data-preset="creative" title="Wide exploration — writing, brainstorm">Creative</button>
+          <button class="preset-btn" data-preset="creative" title="Wide exploration">Creative</button>
           <button class="preset-btn" data-preset="custom" title="Manual">Custom</button>
         </div>
       </div>
@@ -629,12 +617,12 @@
       </div>
 
       <div class="settings-section">
-        <div class="settings-section-label">Integrations · NVIDIA</div>
+        <div class="settings-section-label">Integrations - NVIDIA</div>
         <div class="settings-row">
           <label for="settings-nvidia-key">API key</label>
           <span class="settings-value" id="settings-nvidia-key-status">not set</span>
         </div>
-        <input type="password" id="settings-nvidia-key" placeholder="nvapi-…" autocomplete="off" spellcheck="false" />
+        <input type="password" id="settings-nvidia-key" placeholder="nvapi-..." autocomplete="off" spellcheck="false" />
 
         <div class="settings-row">
           <label for="settings-nvidia-base">Base URL</label>
@@ -687,12 +675,11 @@
         <textarea id="settings-system-prompt" rows="5" placeholder="You are JARVIS, a personal AI assistant. Be concise, helpful, and direct."></textarea>
         <div class="settings-actions">
           <button id="settings-reset" class="ghost" title="Reset all to defaults">Reset</button>
-          <span class="settings-saved-indicator" id="settings-saved">Saved ✓</span>
+          <span class="settings-saved-indicator" id="settings-saved">Saved</span>
         </div>
       </div>
     </aside>
 
-    <!-- Incoming call notification (slides in) -->
     <div id="call-notification" class="call-notification hidden">
       <div class="call-avatar">
         <span class="ring-1"></span>
@@ -705,12 +692,11 @@
         <div class="call-status">incoming call</div>
       </div>
       <div class="call-actions">
-        <button id="call-decline" class="call-btn call-btn-decline" title="Decline">✕</button>
-        <button id="call-accept" class="call-btn call-btn-accept" title="Accept">✓</button>
+        <button id="call-decline" class="call-btn call-btn-decline" title="Decline">x</button>
+        <button id="call-accept" class="call-btn call-btn-accept" title="Accept">+</button>
       </div>
     </div>
 
-    <!-- Voice call dialog (full-screen modal) -->
     <div id="call-dialog" class="call-dialog hidden">
       <div class="call-dialog-backdrop"></div>
       <div class="call-dialog-content">
@@ -718,13 +704,12 @@
           <canvas id="call-waveform" width="420" height="420"></canvas>
           <div class="call-dialog-core">JARVIS</div>
         </div>
-        <div class="call-dialog-name">Active call · JARVIS</div>
+        <div class="call-dialog-name">Active call - JARVIS</div>
         <div id="call-dialog-status" class="call-dialog-status">connected</div>
         <button id="call-hangup" class="call-btn-hangup" title="End call">end call</button>
       </div>
     </div>
 
-    <!-- Negotiation modal (Vinted tab) -->
     <div id="vinted-negotiate-modal" class="vinted-modal hidden" role="dialog" aria-modal="true" aria-labelledby="vinted-negotiate-title">
       <div class="vinted-modal-backdrop" id="vinted-negotiate-backdrop"></div>
       <div class="vinted-modal-content">
@@ -733,23 +718,23 @@
             <h3 id="vinted-negotiate-title">Negotiation suggestion</h3>
             <a id="vinted-negotiate-listing" class="vinted-modal-listing" href="#" target="_blank" rel="noopener noreferrer"></a>
           </div>
-          <button id="vinted-negotiate-close" class="vinted-modal-close" title="Close">×</button>
+          <button id="vinted-negotiate-close" class="vinted-modal-close" title="Close">x</button>
         </header>
         <div class="vinted-modal-body">
           <div class="vinted-negotiate-grid">
             <div class="vinted-negotiate-tier" data-tier="lowball">
               <div class="vinted-negotiate-tier-label">Lowball</div>
-              <div class="vinted-negotiate-tier-value" id="vinted-negotiate-lowball">—</div>
+              <div class="vinted-negotiate-tier-value" id="vinted-negotiate-lowball">-</div>
               <div class="vinted-negotiate-tier-hint">Push hard, expect a counter</div>
             </div>
             <div class="vinted-negotiate-tier vinted-negotiate-tier-target" data-tier="target">
               <div class="vinted-negotiate-tier-label">Target offer</div>
-              <div class="vinted-negotiate-tier-value" id="vinted-negotiate-target">—</div>
+              <div class="vinted-negotiate-tier-value" id="vinted-negotiate-target">-</div>
               <div class="vinted-negotiate-tier-hint" id="vinted-negotiate-discount"></div>
             </div>
             <div class="vinted-negotiate-tier" data-tier="ceiling">
               <div class="vinted-negotiate-tier-label">Ceiling</div>
-              <div class="vinted-negotiate-tier-value" id="vinted-negotiate-ceiling">—</div>
+              <div class="vinted-negotiate-tier-value" id="vinted-negotiate-ceiling">-</div>
               <div class="vinted-negotiate-tier-hint">If they say no, last try</div>
             </div>
           </div>
@@ -760,7 +745,7 @@
             <div class="vinted-negotiate-jarvis-head">
               <span class="vinted-field-label">Jarvis draft</span>
               <span class="vinted-negotiate-jarvis-meta" id="vinted-negotiate-jarvis-meta"></span>
-              <button id="vinted-negotiate-jarvis-btn" class="vinted-negotiate-jarvis-btn" title="Generate a custom message with the active chat model">✨ Generate with Jarvis</button>
+              <button id="vinted-negotiate-jarvis-btn" class="vinted-negotiate-jarvis-btn" title="Generate a custom message with the active chat model">Generate with Jarvis</button>
             </div>
             <div class="vinted-negotiate-jarvis-body hidden" id="vinted-negotiate-jarvis-body">
               <p class="vinted-negotiate-jarvis-text" id="vinted-negotiate-jarvis-text"></p>
@@ -779,11 +764,10 @@
       </div>
     </div>
 
-    <!-- Camera + gesture preview (floating, fixed position) -->
     <div id="camera-panel" class="camera-panel hidden">
       <video id="camera-feed" autoplay muted playsinline></video>
-      <div id="camera-overlay" class="camera-overlay">starting…</div>
-      <button id="camera-close" class="camera-close" title="Close">×</button>
+      <div id="camera-overlay" class="camera-overlay">starting...</div>
+      <button id="camera-close" class="camera-close" title="Close">x</button>
     </div>
 
     <script type="module" src="/src/main.ts"></script>

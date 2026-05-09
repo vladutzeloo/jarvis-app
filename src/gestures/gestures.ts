@@ -6,6 +6,7 @@ import { GestureRecognizer, FilesetResolver } from "@mediapipe/tasks-vision";
 import { addSystem } from "../chat/messages";
 import { send, getIsGenerating } from "../chat/chat";
 import { cancelSpeech } from "../voice/tts";
+import { tryRadioGestureCommand, isRadioCameraActive } from "../radio/radio";
 
 const cameraPanel = document.getElementById("camera-panel") as HTMLElement;
 const cameraFeed = document.getElementById("camera-feed") as HTMLVideoElement;
@@ -41,7 +42,7 @@ async function initGestureRecognizer() {
 
 async function startCamera() {
   try {
-    cameraOverlay.textContent = "loading model…";
+    cameraOverlay.textContent = "loading model...";
     cameraPanel.classList.remove("hidden");
     await initGestureRecognizer();
     cameraStream = await navigator.mediaDevices.getUserMedia({
@@ -86,7 +87,7 @@ async function processFrame() {
           cameraOverlay.textContent = `${prettyGesture(top.categoryName)} ${Math.round(top.score * 100)}%`;
           handleGesture(top.categoryName);
         } else {
-          cameraOverlay.textContent = "—";
+          cameraOverlay.textContent = "-";
         }
       } else {
         cameraOverlay.textContent = "show your hand";
@@ -101,13 +102,13 @@ async function processFrame() {
 
 function prettyGesture(name: string): string {
   return ({
-    "Open_Palm": "✋ Open Palm",
-    "Closed_Fist": "✊ Fist",
-    "Pointing_Up": "☝️ Point",
-    "Thumb_Up": "👍 Thumb Up",
-    "Thumb_Down": "👎 Thumb Down",
-    "Victory": "✌️ Victory",
-    "ILoveYou": "🤟 I love you",
+    "Open_Palm": "Open Palm",
+    "Closed_Fist": "Fist",
+    "Pointing_Up": "Point",
+    "Thumb_Up": "Thumb Up",
+    "Thumb_Down": "Thumb Down",
+    "Victory": "Victory",
+    "ILoveYou": "I love you",
   } as any)[name] || name;
 }
 
@@ -117,6 +118,16 @@ function handleGesture(name: string) {
   if (name === lastFiredGesture && now - lastFiredAt < GESTURE_COOLDOWN_MS) return;
   lastFiredGesture = name;
   lastFiredAt = now;
+
+  // Radio takes priority when its tab is open or its camera-cmd toggle is on -
+  // gives the user a way to DJ from across the room without touching the chat.
+  const radioActive = document.querySelector('.view[data-view="radio"]')?.classList.contains("active");
+  if (radioActive || isRadioCameraActive()) {
+    if (tryRadioGestureCommand(name)) {
+      flashCamera(`radio: ${prettyGesture(name)}`);
+      return;
+    }
+  }
 
   switch (name) {
     case "Open_Palm":
@@ -145,7 +156,7 @@ function handleGesture(name: string) {
 let flashTimer: number | undefined;
 function flashCamera(action: string) {
   cameraOverlay.classList.add("flash");
-  cameraOverlay.textContent = `→ ${action}`;
+  cameraOverlay.textContent = `> ${action}`;
   clearTimeout(flashTimer);
   flashTimer = window.setTimeout(() => {
     cameraOverlay.classList.remove("flash");
