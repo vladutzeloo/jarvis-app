@@ -4,6 +4,12 @@
    Loads last so it overrides per-feature accents where needed. */
 
 /* ─── Scanline + CRT overlay ────────────────────────────────────────────── */
+/*
+   The arcade scanlines belong on the 2D pixel views (Hub, Chat, etc.) but
+   would muddy the 3D scenes. We gate the overlays on `body.no-crt` which
+   tabs.ts toggles whenever the active view is 3D-heavy (World, or Brain
+   when its 3D mode is on).
+*/
 
 body::before {
   content: '';
@@ -21,6 +27,7 @@ body::before {
     );
   mix-blend-mode: multiply;
   opacity: 0.55;
+  transition: opacity 0.25s ease;
 }
 
 body::after {
@@ -31,6 +38,12 @@ body::after {
   z-index: 9001;
   background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.35) 100%);
   animation: crt-flicker 5.7s ease-in-out infinite;
+  transition: opacity 0.25s ease;
+}
+
+body.no-crt::before,
+body.no-crt::after {
+  opacity: 0;
 }
 
 @keyframes crt-flicker {

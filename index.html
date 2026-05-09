@@ -216,13 +216,13 @@
     <header>
       <div class="brand">JARVIS</div>
       <nav class="tabs">
-        <button class="tab active" data-tab="hub">Hub</button>
+        <button class="tab" data-tab="hub">Hub</button>
         <button class="tab" data-tab="chat">Chat</button>
         <button class="tab" data-tab="workspace">Workspace</button>
         <button class="tab" data-tab="agents">Agents</button>
         <button class="tab" data-tab="vinted">Vinted</button>
         <button class="tab" data-tab="brain">Brain</button>
-        <button class="tab" data-tab="world">World</button>
+        <button class="tab active" data-tab="world">World</button>
       </nav>
       <div id="xp-hud" class="xp-hud" title="Open the Hub"></div>
       <div id="stats" class="stats"></div>
@@ -273,7 +273,7 @@
     </div>
 
     <!-- Hub tab — gamified game-map landing screen -->
-    <section class="view hub-view active" data-view="hub">
+    <section class="view hub-view" data-view="hub">
       <!-- Body rendered by src/gamify/hub.ts -->
     </section>
 
@@ -532,8 +532,8 @@
       </div>
     </section>
 
-    <!-- World tab — 3D playground -->
-    <section class="view" data-view="world">
+    <!-- World tab — 3D playground (default landing) -->
+    <section class="view active" data-view="world">
       <div class="world-pane">
         <canvas id="world-canvas" class="world-canvas"></canvas>
         <div class="world-hud">

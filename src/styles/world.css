@@ -169,8 +169,20 @@
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 0;
+  /* Sit ABOVE the SVG circuit board (z-index 0) so the 3D starfield is
+     actually visible behind the UI on every tab. The circuit board still
+     paints at z-index 0; we use additive-style alpha so the two layers
+     blend rather than fight. */
+  z-index: 1;
   display: block;
+}
+
+/* On the World tab the 3D scene IS the background — there's nothing to put
+   the SVG circuit behind. Hide the circuit + ambient layer so the World
+   canvas owns every pixel and we don't burn the GPU rendering both. */
+body.world-active .bg-circuit,
+body.world-active .ambient-canvas {
+  display: none;
 }
 
 /* Brain 3D mode — canvas overlays the SVG inside .brain-viz */
