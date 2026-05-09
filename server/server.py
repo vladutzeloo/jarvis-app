@@ -28,6 +28,7 @@ Endpoints:
 Voice path is taken from $JARVIS_VOICE_PATH (default
 ~/jarvis-tts/voices/en_GB-alan-medium.onnx). Listens on 0.0.0.0:5500.
 """
+import http.client
 import json
 import os
 import sys
@@ -454,6 +455,11 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Accel-Buffering", "no")
         self.end_headers()
 
+        def write_frame(obj):
+            """Write one ndjson frame. Raises on broken pipe so the loop can stop."""
+            self.wfile.write((json.dumps(obj) + "\n").encode())
+            self.wfile.flush()
+
         try:
             for raw in upstream:
                 if not raw:
@@ -462,24 +468,33 @@ class Handler(BaseHTTPRequestHandler):
                     chunk = json.loads(raw.decode())
                 except ValueError:
                     continue
-                msg = chunk.get("message") or {}
-                token = msg.get("content")
+                # Ollama surfaces upstream errors via {"error": "..."} mid-stream.
+                if chunk.get("error"):
+                    try:
+                        write_frame({"error": str(chunk["error"])})
+                    except (BrokenPipeError, ConnectionResetError):
+                        pass
+                    break
+                token = (chunk.get("message") or {}).get("content")
                 if token:
                     try:
-                        self.wfile.write(
-                            (json.dumps({"token": token}) + "\n").encode()
-                        )
-                        self.wfile.flush()
+                        write_frame({"token": token})
                     except (BrokenPipeError, ConnectionResetError):
                         # Client went away; stop pulling from ollama.
                         break
                 if chunk.get("done"):
                     try:
-                        self.wfile.write((json.dumps({"done": True}) + "\n").encode())
-                        self.wfile.flush()
+                        write_frame({"done": True})
                     except (BrokenPipeError, ConnectionResetError):
                         pass
                     break
+        except (OSError, http.client.IncompleteRead) as e:
+            # Connection to ollama died mid-stream — tell the client cleanly
+            # rather than letting the response truncate without a marker.
+            try:
+                write_frame({"error": f"ollama stream interrupted: {e}"})
+            except (BrokenPipeError, ConnectionResetError, OSError):
+                pass
         finally:
             try:
                 upstream.close()

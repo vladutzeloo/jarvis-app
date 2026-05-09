@@ -1,11 +1,13 @@
 import type { Api, SystemStats } from "../api.ts";
+import { escapeHtml } from "../escape.ts";
 
 function gauge(label: string, percent: number | undefined, detail = ""): string {
   const p = Math.max(0, Math.min(100, Number(percent ?? 0)));
   const cls = p >= 90 ? "err" : p >= 75 ? "warn" : "";
+  const detailHtml = detail ? ` · ${escapeHtml(detail)}` : "";
   return `
     <div class="gauge">
-      <div class="gauge-row"><span>${label}</span><b>${p.toFixed(0)}%${detail ? ` · ${detail}` : ""}</b></div>
+      <div class="gauge-row"><span>${escapeHtml(label)}</span><b>${p.toFixed(0)}%${detailHtml}</b></div>
       <div class="gauge-bar"><div class="gauge-fill ${cls}" style="width:${p}%"></div></div>
     </div>
   `;
@@ -26,7 +28,7 @@ function render(stats: SystemStats): string {
   const running = stats.ollama?.running ?? [];
   const ollamaList = running.length
     ? `<div class="kv-list">${running
-        .map((m) => `<div><span>${m.name}</span><b>${m.size_vram_gb?.toFixed(1) ?? "?"} GB</b></div>`)
+        .map((m) => `<div><span>${escapeHtml(m.name)}</span><b>${m.size_vram_gb?.toFixed(1) ?? "?"} GB</b></div>`)
         .join("")}</div>`
     : `<div class="muted">no ollama models loaded</div>`;
 
@@ -53,7 +55,7 @@ export function mountSystem(api: Api, getPollMs: () => number) {
       root.innerHTML = render(s);
     } catch (e: unknown) {
       if ((e as { name?: string }).name === "AbortError") return;
-      root.innerHTML = `<div class="muted">stats unavailable: ${String(
+      root.innerHTML = `<div class="muted">stats unavailable: ${escapeHtml(
         (e as Error).message ?? e,
       )}</div>`;
     } finally {
