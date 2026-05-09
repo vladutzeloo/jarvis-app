@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""JARVIS unified HTTP server — Piper TTS + system stats + ruflo runner.
+"""JARVIS unified HTTP server — Piper TTS + Whisper STT + system stats + ruflo runner + vinted.
 
 Endpoints:
   POST /tts                  {"text": "...", "style": "alan"|"orc"|"narrator"}
+  POST /stt                  raw audio body (e.g. WebM/Opus from MediaRecorder).
+                             Optional ?lang=en. Returns {"text": "..."}.
   GET  /health               -> "ok"
   GET  /styles               -> JSON list of style names
   GET  /system-stats         -> JSON with CPU/RAM/GPU/VRAM/temp + ollama running models
@@ -28,6 +30,7 @@ import os
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlparse, parse_qs
 
 # Make sibling modules importable regardless of how systemd invokes us.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -63,6 +66,9 @@ PORT = int(os.environ.get("JARVIS_PORT", "5500"))
 # larger is almost certainly a bug or abuse and would otherwise be read into
 # memory in a single rfile.read(length) call.
 MAX_BODY_BYTES = 64 * 1024
+# /stt receives audio blobs which are much larger than text payloads. ~30s of
+# Opus-encoded mono webm is well under 1 MB; 16 MB is plenty of headroom.
+MAX_AUDIO_BYTES = 16 * 1024 * 1024
 
 synth = Synthesizer(VOICE_PATH)
 
@@ -112,6 +118,13 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_POST(self):
+        # /stt has a query string (?lang=...), so parse before string-matching.
+        parsed = urlparse(self.path)
+        route = parsed.path
+
+        if route == "/stt":
+            self._handle_stt(parse_qs(parsed.query))
+            return
         if self.path == "/ruflo/run":
             self._handle_ruflo_run()
             return
@@ -198,6 +211,30 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             self.send_response(400); self.end_headers(); return None
 
+    def _read_raw_body(self, max_bytes):
+        """Validate Content-Length and return the body bytes, or None on error
+        (response already sent)."""
+        raw_length = self.headers.get("Content-Length")
+        if raw_length is None:
+            self.send_response(411)
+            self.end_headers()
+            return None
+        try:
+            length = int(raw_length)
+        except ValueError:
+            self.send_response(400)
+            self.end_headers()
+            return None
+        if length <= 0:
+            self.send_response(400)
+            self.end_headers()
+            return None
+        if length > max_bytes:
+            self.send_response(413)
+            self.end_headers()
+            return None
+        return self.rfile.read(length)
+
     def _handle_ruflo_run(self):
         if ruflo_runner is None:
             self._send_json(503, {"error": _RUFLO_IMPORT_ERROR})
@@ -259,6 +296,31 @@ class Handler(BaseHTTPRequestHandler):
                 pass
         except (BrokenPipeError, ConnectionResetError):
             pass
+
+    # ─── whisper STT handler ────────────────────────────────────────────
+
+    def _handle_stt(self, query):
+        body_bytes = self._read_raw_body(MAX_AUDIO_BYTES)
+        if body_bytes is None:
+            return
+        # Lazy import so a missing faster-whisper only breaks /stt, not the
+        # whole server.
+        try:
+            from transcription import transcribe
+        except Exception as e:
+            self._send_json(500, {"error": f"transcription module unavailable: {e}"})
+            return
+        lang = (query.get("lang") or [""])[0].strip() or None
+        try:
+            text = transcribe(body_bytes, language=lang)
+        except RuntimeError as e:
+            # Surfaced when faster-whisper isn't installed.
+            self._send_json(503, {"error": str(e)})
+            return
+        except Exception as e:
+            self._send_json(500, {"error": f"transcription failed: {e}"})
+            return
+        self._send_json(200, {"text": text})
 
     # ─── vinted handlers ────────────────────────────────────────────────
 

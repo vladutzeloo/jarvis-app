@@ -3,14 +3,15 @@
 # setup-piper.sh + setup-orc.sh + setup-cockpit.sh trio.
 #
 # Usage:
-#   bash scripts/jarvis-server.sh [--piper] [--styles] [--cockpit] [--ruflo] [--all]
+#   bash scripts/jarvis-server.sh [--piper] [--styles] [--cockpit] [--ruflo] [--whisper] [--all]
 #
-# Flags map to the four feature layers:
+# Flags map to the feature layers:
 #   --piper    install Piper, download the en_GB-alan voice, copy server.py
 #   --styles   add sox so STYLES (orc / narrator) actually post-process
 #   --cockpit  add psutil for /system-stats
 #   --ruflo    enable the ruflo runner (multi-agent orchestration via npx);
 #              requires node + npx already on PATH inside WSL
+#   --whisper  add faster-whisper + ffmpeg so /stt can transcribe mic audio
 #   --all      do all of the above (default if no flags given)
 #
 # The Python sources live under server/ in this repo. They get copied (not
@@ -28,9 +29,10 @@ DO_PIPER=0
 DO_STYLES=0
 DO_COCKPIT=0
 DO_RUFLO=0
+DO_WHISPER=0
 
 if [ $# -eq 0 ]; then
-    DO_PIPER=1; DO_STYLES=1; DO_COCKPIT=1; DO_RUFLO=1
+    DO_PIPER=1; DO_STYLES=1; DO_COCKPIT=1; DO_RUFLO=1; DO_WHISPER=1
 else
     for arg in "$@"; do
         case "$arg" in
@@ -38,7 +40,8 @@ else
             --styles)  DO_STYLES=1 ;;
             --cockpit) DO_COCKPIT=1 ;;
             --ruflo)   DO_RUFLO=1 ;;
-            --all)     DO_PIPER=1; DO_STYLES=1; DO_COCKPIT=1; DO_RUFLO=1 ;;
+            --whisper) DO_WHISPER=1 ;;
+            --all)     DO_PIPER=1; DO_STYLES=1; DO_COCKPIT=1; DO_RUFLO=1; DO_WHISPER=1 ;;
             -h|--help)
                 grep -E '^# ' "$0" | sed 's/^# //; s/^#//'
                 exit 0 ;;
@@ -54,8 +57,14 @@ if [ -f "$INSTALL_DIR/ruflo_runner.py" ] && [ "$DO_RUFLO" = "0" ]; then
     DO_RUFLO=1
 fi
 
+# Same idea for whisper: if transcription.py is already installed, keep it
+# wired up on partial re-runs.
+if [ -f "$INSTALL_DIR/transcription.py" ] && [ "$DO_WHISPER" = "0" ]; then
+    DO_WHISPER=1
+fi
+
 # Piper requires the directory + venv before anything else can install into it.
-if [ "$DO_STYLES" = "1" ] || [ "$DO_COCKPIT" = "1" ]; then
+if [ "$DO_STYLES" = "1" ] || [ "$DO_COCKPIT" = "1" ] || [ "$DO_WHISPER" = "1" ]; then
     if [ ! -d "$INSTALL_DIR/venv" ]; then
         DO_PIPER=1
     fi
@@ -95,6 +104,17 @@ if [ "$DO_COCKPIT" = "1" ]; then
     "$INSTALL_DIR/venv/bin/pip" install --quiet psutil
 fi
 
+if [ "$DO_WHISPER" = "1" ]; then
+    echo "[whisper] installing ffmpeg + faster-whisper ..."
+    if ! command -v ffmpeg > /dev/null; then
+        sudo apt-get update -qq
+        sudo apt-get install -y ffmpeg
+    else
+        echo "          ffmpeg already present"
+    fi
+    "$INSTALL_DIR/venv/bin/pip" install --quiet faster-whisper
+fi
+
 NODE_BIN_DIR=""
 if [ "$DO_RUFLO" = "1" ]; then
     echo "[ruflo] checking for node + npx ..."
@@ -119,6 +139,9 @@ cp "$SERVER_SRC/system_stats.py" "$INSTALL_DIR/system_stats.py"
 if [ "$DO_RUFLO" = "1" ]; then
     cp "$SERVER_SRC/ruflo_runner.py" "$INSTALL_DIR/ruflo_runner.py"
 fi
+if [ "$DO_WHISPER" = "1" ]; then
+    cp "$SERVER_SRC/transcription.py" "$INSTALL_DIR/transcription.py"
+fi
 
 if [ "$DO_PIPER" = "1" ]; then
     echo "[piper] generating test.wav ..."
@@ -138,7 +161,7 @@ if [ "$DO_RUFLO" = "1" ] && [ -n "$NODE_BIN_DIR" ]; then
 fi
 sudo tee /etc/systemd/system/jarvis-tts.service > /dev/null <<EOF
 [Unit]
-Description=JARVIS server (Piper TTS + system stats + ruflo runner)
+Description=JARVIS server (Piper TTS + system stats + ruflo runner + whisper STT)
 After=network.target
 
 [Service]
