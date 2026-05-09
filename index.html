@@ -209,12 +209,14 @@
     <header>
       <div class="brand">JARVIS</div>
       <nav class="tabs">
-        <button class="tab active" data-tab="chat">Chat</button>
+        <button class="tab active" data-tab="hub">Hub</button>
+        <button class="tab" data-tab="chat">Chat</button>
         <button class="tab" data-tab="workspace">Workspace</button>
         <button class="tab" data-tab="agents">Agents</button>
         <button class="tab" data-tab="vinted">Vinted</button>
         <button class="tab" data-tab="brain">Brain</button>
       </nav>
+      <div id="xp-hud" class="xp-hud" title="Open the Hub"></div>
       <div id="stats" class="stats"></div>
     </header>
 
@@ -262,8 +264,13 @@
       </div>
     </div>
 
+    <!-- Hub tab — gamified game-map landing screen -->
+    <section class="view hub-view active" data-view="hub">
+      <!-- Body rendered by src/gamify/hub.ts -->
+    </section>
+
     <!-- Chat tab -->
-    <section class="view active" data-view="chat">
+    <section class="view" data-view="chat">
       <div class="toolbar">
         <select id="model-picker" title="Model"></select>
         <button id="clear" title="New conversation">⟲ New</button>

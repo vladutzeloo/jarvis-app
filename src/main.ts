@@ -6,6 +6,7 @@
 // DOM queries and state.
 
 import "./tabs";
+import "./gamify/xp";
 import "./cockpit/cockpit";
 import "./brain/brain";
 import "./brain/viz";
@@ -20,6 +21,8 @@ import "./workspace/workspace";
 import "./agents/agents";
 import "./vinted/vinted";
 import "./gestures/gestures";
+import "./gamify/hub";
+import "./gamify/triggers";
 
 import { ensureModelsLoaded } from "./chat/models";
 import { getVaultPath, indexVault } from "./brain/brain";
