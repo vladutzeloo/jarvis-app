@@ -643,6 +643,34 @@
       </div>
 
       <div class="settings-section">
+        <div class="settings-section-label">WOW mode</div>
+        <div class="settings-row settings-toggle-row">
+          <label for="settings-wow-enabled">Warcraft III sounds <span class="settings-hint">accept · ask · complete</span></label>
+          <label class="settings-switch" title="Toggle WOW mode">
+            <input type="checkbox" id="settings-wow-enabled" />
+            <span class="settings-switch-track"><span class="settings-switch-thumb"></span></span>
+          </label>
+        </div>
+        <div class="settings-section-label settings-subsection-label">Race</div>
+        <div class="settings-presets settings-wow-races">
+          <button class="preset-btn wow-race-btn" data-race="human" title="Bright square-wave fanfare">Human</button>
+          <button class="preset-btn wow-race-btn" data-race="orc" title="Low gritty saw + noise">Orc</button>
+          <button class="preset-btn wow-race-btn" data-race="undead" title="Detuned minor triangle">Undead</button>
+          <button class="preset-btn wow-race-btn" data-race="nightelf" title="High sine bells">Night Elf</button>
+        </div>
+        <div class="settings-row">
+          <label for="settings-wow-volume">Volume</label>
+          <span class="settings-value" id="settings-wow-volume-value">60%</span>
+        </div>
+        <input type="range" id="settings-wow-volume" min="0" max="1" step="0.05" value="0.6" />
+        <div class="settings-actions">
+          <button id="settings-wow-test" class="ghost" title="Play a fanfare in the active race">Test</button>
+          <button id="settings-wow-reroll" class="ghost" title="Pick a different race at random">Reroll</button>
+          <span class="settings-hint" id="settings-wow-hint">Drop your own clips at <code>public/wow/&lt;race&gt;/&lt;event&gt;.mp3</code> to override</span>
+        </div>
+      </div>
+
+      <div class="settings-section">
         <div class="settings-section-label">System prompt</div>
         <textarea id="settings-system-prompt" rows="5" placeholder="You are JARVIS, a personal AI assistant. Be concise, helpful, and direct."></textarea>
         <div class="settings-actions">
