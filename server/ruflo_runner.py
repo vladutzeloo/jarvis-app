@@ -17,8 +17,8 @@ one Agents tab streams one job at a time.
 import json
 import os
 import queue
-import shlex
 import shutil
+import signal
 import subprocess
 import threading
 import time
@@ -52,7 +52,12 @@ def _resolve_node_bin() -> Optional[str]:
     home = os.path.expanduser("~")
     nvm_root = os.path.join(home, ".nvm", "versions", "node")
     if os.path.isdir(nvm_root):
-        versions = sorted(os.listdir(nvm_root), reverse=True)
+        # Sort by numeric version components so v10 ranks above v9 (a plain
+        # string sort would pick v9 as "highest" descending).
+        def _semver_key(s: str) -> list:
+            return [int(x) for x in s.lstrip("v").split(".") if x.isdigit()]
+
+        versions = sorted(os.listdir(nvm_root), key=_semver_key, reverse=True)
         for v in versions:
             cand = os.path.join(nvm_root, v, "bin")
             if os.path.isfile(os.path.join(cand, "npx")):
@@ -223,7 +228,7 @@ def start_job(argv: list, cwd: Optional[str] = None) -> Job:
     def _pump(stream, kind: str) -> None:
         try:
             for raw in iter(stream.readline, ""):
-                line = raw.rstrip("\n")
+                line = raw.rstrip("\r\n")
                 job.append_ring(kind, line)
                 job.queue.put((kind, line))
         finally:
@@ -256,7 +261,7 @@ def cancel_job(job_id: str) -> bool:
         # Kill the whole process group so npm/npx wrappers don't leave
         # orphaned children behind.
         pgid = os.getpgid(job.proc.pid)
-        os.killpg(pgid, 15)  # SIGTERM
+        os.killpg(pgid, signal.SIGTERM)
     except (ProcessLookupError, PermissionError):
         try:
             job.proc.terminate()
@@ -269,7 +274,7 @@ def cancel_job(job_id: str) -> bool:
         except subprocess.TimeoutExpired:
             try:
                 pgid = os.getpgid(job.proc.pid)
-                os.killpg(pgid, 9)  # SIGKILL
+                os.killpg(pgid, signal.SIGKILL)
             except Exception:
                 try:
                     job.proc.kill()

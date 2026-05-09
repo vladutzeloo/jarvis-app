@@ -584,8 +584,13 @@ async fn ruflo_run(
         return Err(msg);
     }
 
-    // Step 3: drain the SSE stream, splitting on \n and forwarding `data:` JSON.
-    let mut buffer = String::new();
+    // Step 3: drain the SSE stream, splitting on the \n byte and forwarding
+    // `data:` JSON. The buffer is bytes (not String) because reqwest yields
+    // arbitrary chunk boundaries, and decoding each chunk eagerly would
+    // mangle multi-byte UTF-8 characters that straddle a chunk split. The
+    // \n byte (0x0A) is unambiguous in UTF-8 — it never appears inside a
+    // multi-byte sequence — so splitting on it is safe.
+    let mut buffer: Vec<u8> = Vec::new();
     let mut exit_code: Option<i32> = None;
 
     loop {
@@ -601,12 +606,15 @@ async fn ruflo_run(
                 return Err(msg);
             }
         };
-        buffer.push_str(&String::from_utf8_lossy(&chunk));
+        buffer.extend_from_slice(&chunk);
 
         loop {
-            let Some(idx) = buffer.find('\n') else { break };
-            let line = buffer[..idx].trim().to_string();
-            buffer.drain(..=idx);
+            let Some(idx) = buffer.iter().position(|&b| b == b'\n') else { break };
+            // Decode just this complete line; from_utf8_lossy is now safe
+            // because we know the line ends at a real boundary.
+            let line_bytes: Vec<u8> = buffer.drain(..=idx).collect();
+            let line = String::from_utf8_lossy(&line_bytes[..idx]);
+            let line = line.trim();
             if line.is_empty() || line.starts_with(':') {
                 // SSE keepalive comment.
                 continue;
