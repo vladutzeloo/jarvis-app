@@ -92,13 +92,12 @@ export function fitRenderer(
 }
 
 export function observeResize(el: HTMLElement, cb: () => void): () => void {
+  // ResizeObserver alone covers element-level changes (sidebar collapse, tab
+  // switch) and window resizes, so a separate window listener would just
+  // double-fire the callback.
   const ro = new ResizeObserver(cb);
   ro.observe(el);
-  window.addEventListener("resize", cb);
-  return () => {
-    ro.disconnect();
-    window.removeEventListener("resize", cb);
-  };
+  return () => ro.disconnect();
 }
 
 export function isViewActive(viewName: string): boolean {

@@ -127,17 +127,19 @@ export function initWorld(): void {
   let downAt = 0;
   let downX = 0;
   let downY = 0;
-  canvas.addEventListener("pointerdown", ev => {
+  const onDown = (ev: PointerEvent) => {
     downAt = performance.now();
     downX = ev.clientX;
     downY = ev.clientY;
-  });
-  canvas.addEventListener("pointerup", ev => {
+  };
+  const onUp = (ev: PointerEvent) => {
     const dt = performance.now() - downAt;
     const dx = ev.clientX - downX;
     const dy = ev.clientY - downY;
     if (dt < 250 && Math.hypot(dx, dy) < 6) fireFromPointer(ev);
-  });
+  };
+  canvas.addEventListener("pointerdown", onDown);
+  canvas.addEventListener("pointerup", onUp);
 
   function setScore(n: number) {
     score = n;
@@ -198,6 +200,8 @@ export function initWorld(): void {
       loop.dispose();
       stopResize();
       stopViewObs();
+      canvas!.removeEventListener("pointerdown", onDown);
+      canvas!.removeEventListener("pointerup", onUp);
       controls.dispose();
       knotGeom.dispose();
       knotMat.dispose();

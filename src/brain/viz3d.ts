@@ -89,10 +89,9 @@ export function initBrainViz3D(): void {
   const nodes: Node3D[] = [];
 
   function clearNodes() {
-    for (const n of nodes) {
-      scene.remove(n.mesh);
-      (n.mesh.geometry as THREE.BufferGeometry).dispose?.();
-    }
+    // nodeGeom + materials are shared across rebuilds; only the meshes are
+    // per-build and they hold no GPU resources of their own.
+    for (const n of nodes) scene.remove(n.mesh);
     nodes.length = 0;
   }
 
@@ -161,12 +160,14 @@ export function initBrainViz3D(): void {
   startPulse();
 
   const headerEl = document.querySelector("header");
+  let headerObserver: MutationObserver | null = null;
   if (headerEl) {
-    new MutationObserver(() => {
+    headerObserver = new MutationObserver(() => {
       const busy = headerEl.classList.contains("busy");
       pulseInterval = busy ? 130 : 480;
       startPulse();
-    }).observe(headerEl, { attributes: true, attributeFilter: ["class"] });
+    });
+    headerObserver.observe(headerEl, { attributes: true, attributeFilter: ["class"] });
   }
 
   const fit = () => fitRenderer(renderer, camera, container);
@@ -243,6 +244,8 @@ export function initBrainViz3D(): void {
       loop.dispose();
       stopResize();
       stopViewObs();
+      headerObserver?.disconnect();
+      if (pulseTimer !== undefined) clearInterval(pulseTimer);
       clearNodes();
       nodeGeom.dispose();
       dimMat.dispose();
