@@ -49,13 +49,14 @@ export async function loadSystemPrompt(): Promise<string> {
 
 /**
  * Writes a memory entry to 06_Memory/ in the vault.
- * filename format: YYYY-MM-DD_<slug>.md
+ * filename format: YYYY-MM-DDTHH-MM-SS_<slug>.md — includes the full timestamp
+ * so multiple saves on the same day don't clobber each other.
  * Returns the absolute path of the saved file, or null on failure.
  */
 export async function writeMemoryEntry(slug: string, content: string): Promise<string | null> {
-  const today = new Date().toISOString().slice(0, 10);
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   const safeSlug = slug.replace(/[^a-z0-9-]/gi, "-").toLowerCase() || "note";
-  const filename = `${today}_${safeSlug}.md`;
+  const filename = `${timestamp}_${safeSlug}.md`;
   try {
     return await invoke<string>("write_memory_entry", { filename, content });
   } catch (e) {
