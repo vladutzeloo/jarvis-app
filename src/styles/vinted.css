@@ -636,6 +636,69 @@
   line-height: 1.5;
 }
 
+.vinted-negotiate-jarvis {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: linear-gradient(
+    180deg,
+    rgba(92, 217, 255, 0.05),
+    rgba(13, 17, 23, 0.5)
+  );
+}
+
+.vinted-negotiate-jarvis-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vinted-negotiate-jarvis-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg-dim);
+  letter-spacing: 0.04em;
+  flex: 1;
+  text-align: right;
+}
+
+.vinted-negotiate-jarvis-btn {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.vinted-negotiate-jarvis-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--bg-solid);
+}
+.vinted-negotiate-jarvis-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vinted-negotiate-jarvis-text {
+  font-size: 13px;
+  color: var(--fg);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  min-height: 1.55em;
+}
+
+.vinted-negotiate-jarvis-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
 .vinted-negotiate-drafts {
   display: flex;
   flex-direction: column;

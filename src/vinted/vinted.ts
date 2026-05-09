@@ -10,6 +10,7 @@
 // looking at.
 
 import { PIPER_BASE } from "../types";
+import { streamCompletion } from "../chat/oneshot";
 
 interface CategoryDef {
   id: string;
@@ -566,6 +567,14 @@ const negDiscount = document.getElementById("vinted-negotiate-discount") as HTML
 const negContext = document.getElementById("vinted-negotiate-context") as HTMLElement;
 const negReason = document.getElementById("vinted-negotiate-reason") as HTMLElement;
 const negDraftsList = document.getElementById("vinted-negotiate-drafts-list") as HTMLUListElement;
+const negJarvisBtn = document.getElementById("vinted-negotiate-jarvis-btn") as HTMLButtonElement;
+const negJarvisBody = document.getElementById("vinted-negotiate-jarvis-body") as HTMLElement;
+const negJarvisText = document.getElementById("vinted-negotiate-jarvis-text") as HTMLElement;
+const negJarvisMeta = document.getElementById("vinted-negotiate-jarvis-meta") as HTMLElement;
+const negJarvisCopy = document.getElementById("vinted-negotiate-jarvis-copy") as HTMLButtonElement;
+const negJarvisRegen = document.getElementById("vinted-negotiate-jarvis-regen") as HTMLButtonElement;
+
+let lastNegotiation: NegotiationResponse | null = null;
 
 function closeNegotiation() {
   negModal.classList.add("hidden");
@@ -593,6 +602,16 @@ async function openNegotiation(listingId: string) {
   negReason.textContent = "";
   negDraftsList.replaceChildren();
 
+  // Reset Jarvis draft slot — it stays hidden until user clicks Generate.
+  lastNegotiation = null;
+  negJarvisBody.classList.add("hidden");
+  negJarvisText.textContent = "";
+  negJarvisMeta.textContent = "";
+  negJarvisBtn.disabled = true;
+  negJarvisBtn.textContent = "✨ Generate with Jarvis";
+  negJarvisCopy.disabled = true;
+  negJarvisRegen.disabled = true;
+
   try {
     const res = await fetch(
       `${PIPER_BASE}/vinted/negotiate/${encodeURIComponent(bot.id)}/${encodeURIComponent(listingId)}`,
@@ -604,7 +623,9 @@ async function openNegotiation(listingId: string) {
       return;
     }
     const n: NegotiationResponse = await res.json();
+    lastNegotiation = n;
     renderNegotiation(n);
+    negJarvisBtn.disabled = false;
   } catch (e: any) {
     negContext.textContent = `error: ${e.message || e}`;
   }
@@ -666,6 +687,77 @@ function renderNegotiation(n: NegotiationResponse) {
     negDraftsList.appendChild(li);
   }
 }
+
+// ─── Jarvis-generated draft ──────────────────────────────────────────────────
+
+async function generateJarvisDraft() {
+  const n = lastNegotiation;
+  if (!n) return;
+
+  negJarvisBtn.disabled = true;
+  negJarvisRegen.disabled = true;
+  negJarvisCopy.disabled = true;
+  negJarvisBody.classList.remove("hidden");
+  negJarvisText.textContent = "";
+  negJarvisMeta.textContent = "thinking…";
+
+  const systemPrompt =
+    "You are JARVIS helping the user negotiate on Vinted, a second-hand marketplace. " +
+    "Write ONE short message (2-3 sentences max) the user can send to the seller to make an offer. " +
+    "Be friendly but direct, sound human, never pushy. " +
+    "Always include the offer amount in EUR. Start with 'Hi' or 'Hello' (no full names, no signoff). " +
+    "Do not use emojis, markdown, or bullet points. Output only the message text — no preamble, no quotes.";
+
+  const condBit = n.condition ? `\nCondition: ${n.condition.replace(/_/g, " ")}` : "";
+  const userPrompt = [
+    `Listing: ${n.title}`,
+    `Asking price: €${n.asking.toFixed(0)}`,
+    condBit.trim(),
+    `My target offer: €${n.target_offer.toFixed(0)} (${n.discount_pct.toFixed(0)}% off asking)`,
+    `Market median: €${n.median.toFixed(0)} across ${n.comparable_count} comparable listings`,
+    `Market read: ${n.reason}`,
+    "",
+    "Write the offer message now.",
+  ].filter(Boolean).join("\n");
+
+  try {
+    const result = await streamCompletion({
+      systemPrompt,
+      userPrompt,
+      temperature: 0.6,
+      maxTokens: 160,
+      onDelta: (chunk) => {
+        negJarvisText.textContent = (negJarvisText.textContent || "") + chunk;
+      },
+    });
+    const final = result.text.trim();
+    negJarvisText.textContent = final;
+    negJarvisMeta.textContent = `${result.backend} · ${result.model} · ${result.tokens} tok · ${(result.elapsedMs / 1000).toFixed(1)}s`;
+    negJarvisCopy.disabled = !final;
+    negJarvisRegen.disabled = false;
+    negJarvisBtn.disabled = false;
+    negJarvisBtn.textContent = "✨ Regenerate";
+  } catch (e: any) {
+    negJarvisText.textContent = "";
+    negJarvisMeta.textContent = `error: ${e.message || e}`;
+    negJarvisBtn.disabled = false;
+    negJarvisRegen.disabled = false;
+  }
+}
+
+negJarvisBtn.addEventListener("click", generateJarvisDraft);
+negJarvisRegen.addEventListener("click", generateJarvisDraft);
+negJarvisCopy.addEventListener("click", async () => {
+  const text = negJarvisText.textContent || "";
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    negJarvisCopy.textContent = "Copied ✓";
+    setTimeout(() => { negJarvisCopy.textContent = "Copy"; }, 1500);
+  } catch {
+    negJarvisCopy.textContent = "Copy failed";
+  }
+});
 
 // ─── boot ────────────────────────────────────────────────────────────────────
 

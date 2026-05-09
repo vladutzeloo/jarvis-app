@@ -673,8 +673,23 @@
           <div class="vinted-negotiate-context" id="vinted-negotiate-context"></div>
           <div class="vinted-negotiate-reason" id="vinted-negotiate-reason"></div>
 
+          <div class="vinted-negotiate-jarvis" id="vinted-negotiate-jarvis">
+            <div class="vinted-negotiate-jarvis-head">
+              <span class="vinted-field-label">Jarvis draft</span>
+              <span class="vinted-negotiate-jarvis-meta" id="vinted-negotiate-jarvis-meta"></span>
+              <button id="vinted-negotiate-jarvis-btn" class="vinted-negotiate-jarvis-btn" title="Generate a custom message with the active chat model">✨ Generate with Jarvis</button>
+            </div>
+            <div class="vinted-negotiate-jarvis-body hidden" id="vinted-negotiate-jarvis-body">
+              <p class="vinted-negotiate-jarvis-text" id="vinted-negotiate-jarvis-text"></p>
+              <div class="vinted-negotiate-jarvis-actions">
+                <button id="vinted-negotiate-jarvis-copy" class="vinted-negotiate-draft-copy" disabled>Copy</button>
+                <button id="vinted-negotiate-jarvis-regen" class="vinted-negotiate-draft-copy" disabled>Regenerate</button>
+              </div>
+            </div>
+          </div>
+
           <div class="vinted-negotiate-drafts">
-            <div class="vinted-field-label">Draft messages</div>
+            <div class="vinted-field-label">Templated drafts</div>
             <ul id="vinted-negotiate-drafts-list" class="vinted-negotiate-drafts-list"></ul>
           </div>
         </div>
