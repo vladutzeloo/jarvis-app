@@ -281,12 +281,12 @@
     <section class="view" data-view="chat">
       <div class="toolbar">
         <select id="model-picker" title="Model"></select>
-        <button id="clear" title="New conversation">⟲ New</button>
-        <button id="remember" title="Save this conversation to your vault (06_Memory)">📌 Remember</button>
-        <button id="settings-toggle" title="Tweaks: temperature, system prompt, context length...">⚙</button>
-        <button id="research-toggle" title="Research mode: fast model researches your Brain, heavy model answers">🔬</button>
-        <button id="voice-toggle" title="Speak responses" class="voice-on">🔊</button>
-        <button id="camera-toggle" title="Toggle camera + gestures">📹</button>
+        <button id="clear" aria-label="New conversation" title="New conversation">⟲ New</button>
+        <button id="remember" aria-label="Save this conversation" title="Save this conversation to your vault (06_Memory)">📌 Remember</button>
+        <button id="settings-toggle" aria-label="Open settings" title="Tweaks: temperature, system prompt, context length...">⚙</button>
+        <button id="research-toggle" aria-label="Toggle research mode" title="Research mode: fast model researches your Brain, heavy model answers">🔬</button>
+        <button id="voice-toggle" aria-label="Toggle text to speech" title="Speak responses" class="voice-on">🔊</button>
+        <button id="camera-toggle" aria-label="Toggle camera" title="Toggle camera + gestures">📹</button>
         <span id="tts-engine" class="tts-engine" title="Active speech engine">🌐 Web Speech</span>
         <select id="tts-style" title="JARVIS voice style">
           <option value="alan">Alan — proper</option>
@@ -562,7 +562,7 @@
     <aside id="settings-drawer" class="settings-drawer hidden">
       <div class="settings-header">
         <span class="settings-title">Tweaks</span>
-        <button id="settings-close" class="ghost" title="Close">×</button>
+        <button id="settings-close" class="ghost" aria-label="Close settings" title="Close">×</button>
       </div>
 
       <div class="settings-section">
