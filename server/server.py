@@ -24,6 +24,14 @@ Endpoints:
   GET  /chat/health          -> {"ok": true, "models": [...]} (probes local Ollama)
   POST /chat                 {"model": "...", "messages": [...]} -> streams ndjson
                              tokens: {"token":"..."}\n ... {"done":true}\n
+  GET  /orc/state            -> JSON snapshot of the orc NPC's phase + position
+  GET  /orc/tasks            -> [{"id", "prompt", "added_at"}]
+  POST /orc/tasks            {"prompt": "..."} -> task
+  DELETE /orc/tasks/<id>     -> {"deleted": true|false}
+  GET  /orc/recent           -> recent completions (most recent first)
+  POST /orc/run-now          -> kick a cycle now ({"started": bool})
+  POST /orc/config           {"enabled"?, "model"?, "interval_s"?} -> applied config
+  POST /orc/ack              -> clear unread notification counter
 
 Voice path is taken from $JARVIS_VOICE_PATH (default
 ~/jarvis-tts/voices/en_GB-alan-medium.onnx). Listens on 0.0.0.0:5500.
@@ -60,6 +68,16 @@ except Exception as _vinted_import_err:  # pragma: no cover - defensive
     _VINTED_IMPORT_ERROR = str(_vinted_import_err)
 else:
     _VINTED_IMPORT_ERROR = None
+
+# orc_runner is also optional — older installs without the file get 503s on
+# /orc/* but the rest of the server stays up.
+try:
+    import orc_runner
+except Exception as _orc_import_err:  # pragma: no cover - defensive
+    orc_runner = None
+    _ORC_IMPORT_ERROR = str(_orc_import_err)
+else:
+    _ORC_IMPORT_ERROR = None
 
 
 DEFAULT_VOICE = str(Path.home() / "jarvis-tts" / "voices" / "en_GB-alan-medium.onnx")
@@ -122,6 +140,21 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json(200, vinted_runner.list_bots())
         elif self.path == "/chat/health":
             self._handle_chat_health()
+        elif self.path == "/orc/state":
+            if orc_runner is None:
+                self._send_json(503, {"error": _ORC_IMPORT_ERROR})
+            else:
+                self._send_json(200, orc_runner.state())
+        elif self.path == "/orc/tasks":
+            if orc_runner is None:
+                self._send_json(503, {"error": _ORC_IMPORT_ERROR})
+            else:
+                self._send_json(200, orc_runner.list_tasks())
+        elif self.path == "/orc/recent":
+            if orc_runner is None:
+                self._send_json(503, {"error": _ORC_IMPORT_ERROR})
+            else:
+                self._send_json(200, orc_runner.recent())
         else:
             self.send_response(404)
             self.end_headers()
@@ -154,6 +187,18 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.path == "/chat":
             self._handle_chat()
+            return
+        if self.path == "/orc/tasks":
+            self._handle_orc_add_task()
+            return
+        if self.path == "/orc/run-now":
+            self._handle_orc_run_now()
+            return
+        if self.path == "/orc/config":
+            self._handle_orc_config()
+            return
+        if self.path == "/orc/ack":
+            self._handle_orc_ack()
             return
         if self.path != "/tts":
             self.send_response(404)
@@ -201,6 +246,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_DELETE(self):
         if self.path.startswith("/vinted/bots/"):
             self._handle_vinted_delete(self.path[len("/vinted/bots/"):])
+            return
+        if self.path.startswith("/orc/tasks/"):
+            self._handle_orc_delete_task(self.path[len("/orc/tasks/"):])
             return
         self.send_response(404)
         self.end_headers()
@@ -391,6 +439,62 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json(404, {"error": str(e)})
             return
         self._send_json(200, result)
+
+    # ─── orc handlers ──────────────────────────────────────────────────
+
+    def _handle_orc_add_task(self):
+        if orc_runner is None:
+            self._send_json(503, {"error": _ORC_IMPORT_ERROR})
+            return
+        body = self._read_json_body()
+        if body is None:
+            return
+        try:
+            task = orc_runner.add_task(body.get("prompt") or "")
+        except ValueError as e:
+            self._send_json(400, {"error": str(e)})
+            return
+        self._send_json(200, task)
+
+    def _handle_orc_delete_task(self, task_id):
+        if orc_runner is None:
+            self._send_json(503, {"error": _ORC_IMPORT_ERROR})
+            return
+        ok = orc_runner.delete_task(task_id)
+        self._send_json(200 if ok else 404, {"deleted": ok})
+
+    def _handle_orc_run_now(self):
+        if orc_runner is None:
+            self._send_json(503, {"error": _ORC_IMPORT_ERROR})
+            return
+        # No body required, but tolerate POST with Content-Length: 0.
+        raw_length = self.headers.get("Content-Length")
+        if raw_length and int(raw_length) > 0:
+            self._read_json_body()  # drain, ignore content
+        self._send_json(200, {"started": orc_runner.run_now()})
+
+    def _handle_orc_config(self):
+        if orc_runner is None:
+            self._send_json(503, {"error": _ORC_IMPORT_ERROR})
+            return
+        body = self._read_json_body()
+        if body is None:
+            return
+        cfg = orc_runner.set_config(
+            enabled=body.get("enabled"),
+            model=body.get("model"),
+            interval_s=body.get("interval_s"),
+        )
+        self._send_json(200, cfg)
+
+    def _handle_orc_ack(self):
+        if orc_runner is None:
+            self._send_json(503, {"error": _ORC_IMPORT_ERROR})
+            return
+        raw_length = self.headers.get("Content-Length")
+        if raw_length and int(raw_length) > 0:
+            self._read_json_body()
+        self._send_json(200, {"cleared": orc_runner.ack()})
 
     # ─── chat (ollama proxy) handlers ──────────────────────────────────
 
