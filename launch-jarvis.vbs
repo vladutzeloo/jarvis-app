@@ -7,7 +7,7 @@ Dim WshShell, fso, jarvisExe, waitCmd
 Set WshShell = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 
-jarvisExe = "C:\Users\vdzoo\Projects\jarvis-local\src-tauri\target\release\jarvis-local.exe"
+jarvisExe = "C:\Users\vdzoo\Documents\GitHub\jarvis-app\src-tauri\target\release\jarvis-local.exe"
 
 If Not fso.FileExists(jarvisExe) Then
     MsgBox "JARVIS .exe not found at:" & vbCrLf & jarvisExe & vbCrLf & vbCrLf & _

@@ -409,8 +409,9 @@ fn greet(name: &str) -> String {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Eagerly parse `.env` on startup so the first chat request doesn't pay
-    // the cost mid-stream.
-    let _ = env_store().lock();
+    // the cost mid-stream. We only care about forcing the lazy initializer;
+    // the lock is released immediately.
+    drop(env_store().lock());
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())

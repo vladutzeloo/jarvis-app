@@ -1316,9 +1316,16 @@ const brainStatus = document.getElementById("brain-status") as HTMLElement;
 const brainResults = document.getElementById("brain-results") as HTMLElement;
 
 const STORAGE_VAULT = "jarvis.vault.path";
-const DEFAULT_VAULT = "C:\\Users\\vdzoo\\Documents\\obisidian\\brain";
+// Canonical vault: the own-jarvis repo (Obsidian vault at the repo root).
+// See https://github.com/vladutzeloo/own-jarvis.
+const DEFAULT_VAULT = "C:\\Users\\vdzoo\\Documents\\GitHub\\own-jarvis";
+// Legacy paths from earlier versions — auto-migrate to DEFAULT_VAULT on next launch.
+const LEGACY_VAULT_PATHS = new Set<string>([
+  "C:\\Users\\vdzoo\\Documents\\obisidian\\brain",
+  "C:\\Users\\vdzoo\\Documents\\obsidian\\brain",
+]);
 let vaultPath = localStorage.getItem(STORAGE_VAULT) || "";
-if (!vaultPath) {
+if (!vaultPath || LEGACY_VAULT_PATHS.has(vaultPath)) {
   vaultPath = DEFAULT_VAULT;
   localStorage.setItem(STORAGE_VAULT, vaultPath);
 }
