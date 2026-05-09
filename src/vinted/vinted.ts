@@ -162,8 +162,15 @@ function populateSelect(sel: HTMLSelectElement, opts: { value: string; label: st
 }
 
 setStatus("probing", "probing…");
-refreshHealth();
-setInterval(refreshHealth, 12000);
+
+// Recursive setTimeout (rather than setInterval) so a slow probe can never
+// overlap with the next one — the next tick is only scheduled once the
+// previous fetch settles.
+async function probeLoop() {
+  await refreshHealth();
+  setTimeout(probeLoop, 12000);
+}
+probeLoop();
 
 // ─── bot list ────────────────────────────────────────────────────────────────
 

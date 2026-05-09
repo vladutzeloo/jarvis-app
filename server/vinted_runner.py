@@ -18,6 +18,7 @@ stays UI-agnostic so it can be unit-tested without a server.
 """
 from __future__ import annotations
 
+import http.cookiejar
 import json
 import os
 import random
@@ -31,12 +32,16 @@ import uuid
 from pathlib import Path
 from typing import Any, Optional
 
+VINTED_HOME_URL = "https://www.vinted.com/"
 VINTED_CATALOG_URL = "https://www.vinted.com/api/v2/catalog/items"
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
 REQUEST_TIMEOUT = 8.0
+# Refresh the cookie jar at most this often. Vinted's anonymous session
+# cookies are good for hours; we re-prime well before that to be safe.
+COOKIE_TTL_SECONDS = 30 * 60
 
 DEFAULT_STORE = Path(
     os.environ.get(
@@ -174,6 +179,8 @@ def upsert_bot(payload: dict[str, Any]) -> dict[str, Any]:
                     bot["created_at"] = existing.get("created_at", time.time())
                     bot["last_scan_at"] = existing.get("last_scan_at")
                     bot["last_results"] = existing.get("last_results", [])
+                    bot["last_summary"] = existing.get("last_summary")
+                    bot["last_source"] = existing.get("last_source")
                     bots[i] = bot
                     _save(state)
                     return bot
@@ -185,6 +192,8 @@ def upsert_bot(payload: dict[str, Any]) -> dict[str, Any]:
         bot["created_at"] = time.time()
         bot["last_scan_at"] = None
         bot["last_results"] = []
+        bot["last_summary"] = None
+        bot["last_source"] = None
         bots.append(bot)
         _save(state)
         return bot
@@ -299,9 +308,70 @@ def _validate_bot_input(payload: dict[str, Any]) -> dict[str, Any]:
 
 # ─── Vinted fetch ─────────────────────────────────────────────────────────────
 
+# Module-level cookie jar shared across scans. Vinted's API v2 returns 403
+# on unauthenticated requests, so we hit the homepage first to pick up an
+# anonymous session cookie (e.g. _vinted_fr_session) and replay it on the
+# catalog call. Re-priming on every scan would be wasteful — cache for
+# COOKIE_TTL_SECONDS.
+_cookie_jar = http.cookiejar.CookieJar()
+_cookie_lock = threading.Lock()
+_cookie_primed_at: float = 0.0
+
+
+def _build_opener() -> urllib.request.OpenerDirector:
+    return urllib.request.build_opener(
+        urllib.request.HTTPCookieProcessor(_cookie_jar),
+    )
+
+
+def _common_headers(extra: Optional[dict[str, str]] = None) -> dict[str, str]:
+    base = {
+        "User-Agent": USER_AGENT,
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+    if extra:
+        base.update(extra)
+    return base
+
+
+def _prime_session() -> Optional[str]:
+    """Fetch the Vinted homepage to populate the anonymous session cookie.
+    Returns None on success, or a short error string on failure."""
+    global _cookie_primed_at
+    with _cookie_lock:
+        if (time.time() - _cookie_primed_at) < COOKIE_TTL_SECONDS and any(
+            c.name.endswith("_session") for c in _cookie_jar
+        ):
+            return None
+        # Stale or empty — clear and re-fetch.
+        _cookie_jar.clear()
+        req = urllib.request.Request(
+            VINTED_HOME_URL,
+            headers=_common_headers({
+                "Accept": (
+                    "text/html,application/xhtml+xml,application/xml;"
+                    "q=0.9,image/avif,image/webp,*/*;q=0.8"
+                ),
+            }),
+        )
+        try:
+            opener = _build_opener()
+            with opener.open(req, timeout=REQUEST_TIMEOUT) as resp:
+                # Drain a small slice so the connection closes cleanly. We
+                # only care about the Set-Cookie headers the jar captured.
+                resp.read(1024)
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as e:
+            return f"home unreachable: {e.__class__.__name__}"
+        _cookie_primed_at = time.time()
+        return None
+
 
 def _fetch_vinted(bot: dict[str, Any]) -> tuple[list[dict[str, Any]], str, Optional[str]]:
     """Return (listings, source, error). source is "vinted" or "demo"."""
+    prime_err = _prime_session()
+    if prime_err:
+        return _demo_listings(bot), "demo", prime_err
+
     params = {
         "search_text": bot["query"],
         "order": "price_low_to_high",
@@ -315,17 +385,23 @@ def _fetch_vinted(bot: dict[str, Any]) -> tuple[list[dict[str, Any]], str, Optio
     url = f"{VINTED_CATALOG_URL}?{urllib.parse.urlencode(params)}"
     req = urllib.request.Request(
         url,
-        headers={
-            "User-Agent": USER_AGENT,
-            "Accept": "application/json",
-            "Accept-Language": "en-US,en;q=0.9",
-        },
+        headers=_common_headers({
+            "Accept": "application/json, text/plain, */*",
+            "Referer": VINTED_HOME_URL,
+            "X-Requested-With": "XMLHttpRequest",
+        }),
     )
     try:
-        with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT) as resp:
+        opener = _build_opener()
+        with opener.open(req, timeout=REQUEST_TIMEOUT) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
             data = json.loads(raw)
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError, OSError) as e:
+        # Drop cached cookies so the next call re-primes from scratch in
+        # case Vinted rotated the session.
+        with _cookie_lock:
+            _cookie_jar.clear()
+            globals()["_cookie_primed_at"] = 0.0
         return _demo_listings(bot), "demo", f"vinted unreachable: {e.__class__.__name__}"
 
     items = data.get("items") if isinstance(data, dict) else None
@@ -412,16 +488,16 @@ def _rank(listings: list[dict[str, Any]], bot: dict[str, Any]) -> list[dict[str,
     keywords = set(cat.get("keywords") or [])
     query_tokens = _tokens(bot["query"])
 
-    # Prefilter: keep listings that mention at least one keyword from the
-    # category OR a token from the query. For "custom" category, only the
-    # query-token gate applies.
+    # Prefilter: keep listings whose title hits at least one category keyword
+    # OR at least one query token. For categories with no keywords (custom),
+    # the query-token gate is the only one that applies.
     def relevant(li: dict[str, Any]) -> bool:
         title = li["title"].lower()
-        if keywords and not any(k in title for k in keywords):
-            # Allow if query tokens hit
-            if not any(t in title for t in query_tokens):
-                return False
-        return True
+        if any(k in title for k in keywords):
+            return True
+        if any(t in title for t in query_tokens):
+            return True
+        return False
 
     filtered = [li for li in listings if relevant(li)] or listings
 
