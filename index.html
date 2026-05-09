@@ -212,6 +212,7 @@
         <button class="tab active" data-tab="chat">Chat</button>
         <button class="tab" data-tab="workspace">Workspace</button>
         <button class="tab" data-tab="agents">Agents</button>
+        <button class="tab" data-tab="vinted">Vinted</button>
         <button class="tab" data-tab="brain">Brain</button>
       </nav>
       <div id="stats" class="stats"></div>
@@ -351,6 +352,118 @@
             </div>
           </form>
           <pre class="agents-console" id="agents-console" aria-live="polite"></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- Vinted tab — multi-bot Vinted PC-parts hunter -->
+    <section class="view" data-view="vinted">
+      <div class="vinted-toolbar">
+        <span class="vinted-status" id="vinted-status" title="Bridge status">
+          <span class="vinted-status-dot"></span>
+          <span class="vinted-status-text">probing…</span>
+        </span>
+        <span class="vinted-version" id="vinted-version"></span>
+        <span class="vinted-spacer"></span>
+        <button id="vinted-scan-all" class="ghost" title="Scan every bot in sequence">⟳ Scan all</button>
+        <button id="vinted-new" class="vinted-primary" title="Create a new bot">＋ New bot</button>
+      </div>
+      <div class="vinted-body">
+        <aside class="vinted-rail">
+          <div class="vinted-rail-label">Bots</div>
+          <ul class="vinted-bot-list" id="vinted-bot-list"></ul>
+          <div class="vinted-rail-help">
+            Each bot is a saved Vinted search. Pick one to scan it on demand;
+            results are scored against the median price and bucketed into
+            <strong>buy / watch / skip</strong>.
+          </div>
+        </aside>
+
+        <div class="vinted-main">
+          <!-- Editor (shown when creating or editing a bot) -->
+          <form class="vinted-editor hidden" id="vinted-editor" autocomplete="off">
+            <div class="vinted-editor-header">
+              <span class="vinted-editor-title" id="vinted-editor-title">New bot</span>
+              <span class="vinted-editor-msg" id="vinted-editor-msg"></span>
+            </div>
+            <div class="vinted-editor-grid">
+              <label class="vinted-field">
+                <span class="vinted-field-label">Name</span>
+                <input id="vinted-form-name" type="text" maxlength="80" placeholder="RTX 3070 hunter" required>
+              </label>
+              <label class="vinted-field">
+                <span class="vinted-field-label">Search query</span>
+                <input id="vinted-form-query" type="text" maxlength="120" placeholder="rtx 3070" required>
+              </label>
+              <label class="vinted-field">
+                <span class="vinted-field-label">Category</span>
+                <select id="vinted-form-category"></select>
+              </label>
+              <label class="vinted-field">
+                <span class="vinted-field-label">Condition</span>
+                <select id="vinted-form-condition"></select>
+              </label>
+              <label class="vinted-field">
+                <span class="vinted-field-label">Min € (optional)</span>
+                <input id="vinted-form-min" type="number" min="0" max="100000" step="1" placeholder="0">
+              </label>
+              <label class="vinted-field">
+                <span class="vinted-field-label">Max € (optional)</span>
+                <input id="vinted-form-max" type="number" min="0" max="100000" step="1" placeholder="500">
+              </label>
+              <label class="vinted-field">
+                <span class="vinted-field-label">Top N suggestions</span>
+                <input id="vinted-form-max-results" type="number" min="1" max="25" step="1" value="8">
+              </label>
+            </div>
+            <div class="vinted-editor-actions">
+              <button type="button" id="vinted-form-cancel" class="ghost">Cancel</button>
+              <button type="submit" id="vinted-form-save" class="vinted-primary">Save bot</button>
+            </div>
+          </form>
+
+          <!-- Detail (shown when a bot is selected) -->
+          <section class="vinted-detail hidden" id="vinted-detail">
+            <header class="vinted-detail-header">
+              <div>
+                <h2 id="vinted-detail-name">—</h2>
+                <div class="vinted-detail-meta" id="vinted-detail-meta"></div>
+              </div>
+              <div class="vinted-detail-actions">
+                <button id="vinted-edit" class="ghost" title="Edit this bot">✎ Edit</button>
+                <button id="vinted-delete" class="ghost vinted-danger" title="Delete this bot">🗑 Delete</button>
+                <button id="vinted-scan" class="vinted-primary" title="Run a scan now">▶ Scan</button>
+              </div>
+            </header>
+
+            <div class="vinted-summary" id="vinted-summary">
+              <div class="vinted-summary-card" data-verdict="buy">
+                <span class="vinted-summary-count" id="vinted-summary-buy">0</span>
+                <span class="vinted-summary-label">Buy</span>
+              </div>
+              <div class="vinted-summary-card" data-verdict="watch">
+                <span class="vinted-summary-count" id="vinted-summary-watch">0</span>
+                <span class="vinted-summary-label">Watch</span>
+              </div>
+              <div class="vinted-summary-card" data-verdict="skip">
+                <span class="vinted-summary-count" id="vinted-summary-skip">0</span>
+                <span class="vinted-summary-label">Skip</span>
+              </div>
+              <div class="vinted-summary-source" id="vinted-summary-source"></div>
+            </div>
+
+            <ul class="vinted-results" id="vinted-results"></ul>
+          </section>
+
+          <!-- Empty state -->
+          <div class="vinted-empty" id="vinted-empty">
+            <div class="vinted-empty-icon">🤖</div>
+            <div class="vinted-empty-title">No bot selected</div>
+            <div class="vinted-empty-hint">
+              Pick a bot from the rail or click <strong>New bot</strong> to
+              start hunting PC parts on Vinted.
+            </div>
+          </div>
         </div>
       </div>
     </section>

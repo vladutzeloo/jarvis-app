@@ -11,6 +11,12 @@ Endpoints:
   POST /ruflo/run            {"argv": [...]} -> {"job_id": "..."}
   GET  /ruflo/stream/<id>    -> SSE: data: {"type":"stdout|stderr|done", ...}
   POST /ruflo/cancel/<id>    -> {"cancelled": true|false}
+  GET  /vinted/health        -> {"ok": true, "categories": [...], "conditions": [...]}
+  GET  /vinted/bots          -> [{"id", "name", "query", ...}]
+  POST /vinted/bots          {"name", "query", "category", ...} -> bot
+  DELETE /vinted/bots/<id>   -> {"deleted": true|false}
+  POST /vinted/scan/<id>     -> {"suggestions": [...], "summary": {...}}
+  POST /vinted/scan-all      -> [{...}, ...]
 
 Voice path is taken from $JARVIS_VOICE_PATH (default
 ~/jarvis-tts/voices/en_GB-alan-medium.onnx). Listens on 0.0.0.0:5500.
@@ -36,6 +42,15 @@ except Exception as _ruflo_import_err:  # pragma: no cover - defensive
     _RUFLO_IMPORT_ERROR = str(_ruflo_import_err)
 else:
     _RUFLO_IMPORT_ERROR = None
+
+# vinted_runner is similarly optional.
+try:
+    import vinted_runner
+except Exception as _vinted_import_err:  # pragma: no cover - defensive
+    vinted_runner = None
+    _VINTED_IMPORT_ERROR = str(_vinted_import_err)
+else:
+    _VINTED_IMPORT_ERROR = None
 
 
 DEFAULT_VOICE = str(Path.home() / "jarvis-tts" / "voices" / "en_GB-alan-medium.onnx")
@@ -80,6 +95,16 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json(200, ruflo_runner.list_jobs())
         elif self.path.startswith("/ruflo/stream/"):
             self._handle_ruflo_stream(self.path[len("/ruflo/stream/"):])
+        elif self.path == "/vinted/health":
+            if vinted_runner is None:
+                self._send_json(503, {"ok": False, "error": _VINTED_IMPORT_ERROR})
+            else:
+                self._send_json(200, vinted_runner.health())
+        elif self.path == "/vinted/bots":
+            if vinted_runner is None:
+                self._send_json(503, {"error": _VINTED_IMPORT_ERROR})
+            else:
+                self._send_json(200, vinted_runner.list_bots())
         else:
             self.send_response(404)
             self.end_headers()
@@ -90,6 +115,15 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.path.startswith("/ruflo/cancel/"):
             self._handle_ruflo_cancel(self.path[len("/ruflo/cancel/"):])
+            return
+        if self.path == "/vinted/bots":
+            self._handle_vinted_upsert()
+            return
+        if self.path == "/vinted/scan-all":
+            self._handle_vinted_scan_all()
+            return
+        if self.path.startswith("/vinted/scan/"):
+            self._handle_vinted_scan(self.path[len("/vinted/scan/"):])
             return
         if self.path != "/tts":
             self.send_response(404)
@@ -133,6 +167,13 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(audio)))
         self.end_headers()
         self.wfile.write(audio)
+
+    def do_DELETE(self):
+        if self.path.startswith("/vinted/bots/"):
+            self._handle_vinted_delete(self.path[len("/vinted/bots/"):])
+            return
+        self.send_response(404)
+        self.end_headers()
 
     # ─── ruflo handlers ─────────────────────────────────────────────────
 
@@ -213,6 +254,46 @@ class Handler(BaseHTTPRequestHandler):
                 pass
         except (BrokenPipeError, ConnectionResetError):
             pass
+
+    # ─── vinted handlers ────────────────────────────────────────────────
+
+    def _handle_vinted_upsert(self):
+        if vinted_runner is None:
+            self._send_json(503, {"error": _VINTED_IMPORT_ERROR})
+            return
+        body = self._read_json_body()
+        if body is None:
+            return
+        try:
+            bot = vinted_runner.upsert_bot(body)
+        except ValueError as e:
+            self._send_json(400, {"error": str(e)})
+            return
+        self._send_json(200, bot)
+
+    def _handle_vinted_delete(self, bot_id):
+        if vinted_runner is None:
+            self._send_json(503, {"error": _VINTED_IMPORT_ERROR})
+            return
+        ok = vinted_runner.delete_bot(bot_id)
+        self._send_json(200 if ok else 404, {"deleted": ok})
+
+    def _handle_vinted_scan(self, bot_id):
+        if vinted_runner is None:
+            self._send_json(503, {"error": _VINTED_IMPORT_ERROR})
+            return
+        try:
+            result = vinted_runner.scan_bot(bot_id)
+        except ValueError as e:
+            self._send_json(404, {"error": str(e)})
+            return
+        self._send_json(200, result)
+
+    def _handle_vinted_scan_all(self):
+        if vinted_runner is None:
+            self._send_json(503, {"error": _VINTED_IMPORT_ERROR})
+            return
+        self._send_json(200, vinted_runner.scan_all())
 
     def _send_text(self, status, body):
         encoded = body.encode() if isinstance(body, str) else body
