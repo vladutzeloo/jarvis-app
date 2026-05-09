@@ -39,16 +39,16 @@ async function pickResearchModel(): Promise<string> {
     const res = await fetch(`${OLLAMA_BASE}/api/tags`);
     const data = await res.json();
     const names: string[] = (data.models || []).map((m: any) => m.name);
+    // Prefer well-known small/fast models for the research pass; fall through
+    // to anything in the 3-8B range, or whatever the user has picked.
     const prefer = [
-      "llama-4070:latest", "llama-4070",
-      "qwen-coder-4070-fast:latest", "qwen-coder-4070-fast",
       "llama3.1:8b", "llama3.2:3b",
       "qwen2.5-coder:7b",
     ];
     for (const p of prefer) {
       if (names.includes(p)) return p;
     }
-    const small = names.find(n => /:[37]b/i.test(n));
+    const small = names.find(n => /:[378]b/i.test(n));
     return small || getModelPicker().value;
   } catch {
     return getModelPicker().value;

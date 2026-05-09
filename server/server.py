@@ -27,6 +27,11 @@ DEFAULT_VOICE = str(Path.home() / "jarvis-tts" / "voices" / "en_GB-alan-medium.o
 VOICE_PATH = os.environ.get("JARVIS_VOICE_PATH", DEFAULT_VOICE)
 PORT = int(os.environ.get("JARVIS_PORT", "5500"))
 
+# Cap inbound /tts payloads. The webview only ever sends short prompts; anything
+# larger is almost certainly a bug or abuse and would otherwise be read into
+# memory in a single rfile.read(length) call.
+MAX_BODY_BYTES = 64 * 1024
+
 synth = Synthesizer(VOICE_PATH)
 
 
@@ -57,7 +62,16 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
             return
-        length = int(self.headers.get("Content-Length", 0))
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+        except (TypeError, ValueError):
+            self.send_response(411)
+            self.end_headers()
+            return
+        if length <= 0 or length > MAX_BODY_BYTES:
+            self.send_response(413)
+            self.end_headers()
+            return
         try:
             body = json.loads(self.rfile.read(length).decode())
         except Exception:
