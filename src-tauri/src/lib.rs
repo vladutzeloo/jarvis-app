@@ -452,6 +452,192 @@ async fn nvidia_chat_stream(
     })
 }
 
+// ─── public commands: ruflo runner ───────────────────────────────────────────
+//
+// Talks to the WSL bridge installed by `scripts/jarvis-server.sh --ruflo`.
+// Health/jobs/cancel are simple JSON proxies; `ruflo_run` consumes the SSE
+// stream and re-emits frames as Tauri events on the same channel pattern as
+// `nvidia_chat_stream`:
+//
+//   { "type": "stdout", "line": "..." }
+//   { "type": "stderr", "line": "..." }
+//   { "type": "done",   "exit_code": N }
+//   { "type": "error",  "message": "..." }
+//
+// The bridge always prefixes argv with `npx -y ruflo@latest` server-side, so
+// the webview can only invoke ruflo subcommands.
+
+const RUFLO_BASE: &str = "http://127.0.0.1:5500";
+
+fn ruflo_client() -> Result<reqwest::Client, String> {
+    reqwest::Client::builder()
+        .build()
+        .map_err(|e| format!("client build error: {e}"))
+}
+
+#[tauri::command]
+async fn ruflo_health() -> Result<serde_json::Value, String> {
+    let client = ruflo_client()?;
+    let resp = client
+        .get(format!("{RUFLO_BASE}/ruflo/health"))
+        .timeout(std::time::Duration::from_secs(2))
+        .send()
+        .await
+        .map_err(|e| format!("bridge unreachable: {e}"))?;
+    let status = resp.status();
+    let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    if !status.is_success() {
+        return Err(json.to_string());
+    }
+    Ok(json)
+}
+
+#[tauri::command]
+async fn ruflo_jobs() -> Result<serde_json::Value, String> {
+    let client = ruflo_client()?;
+    let resp = client
+        .get(format!("{RUFLO_BASE}/ruflo/jobs"))
+        .timeout(std::time::Duration::from_secs(2))
+        .send()
+        .await
+        .map_err(|e| format!("bridge unreachable: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("HTTP {}", resp.status()));
+    }
+    resp.json::<serde_json::Value>().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn ruflo_cancel(job_id: String) -> Result<serde_json::Value, String> {
+    let client = ruflo_client()?;
+    let resp = client
+        .post(format!("{RUFLO_BASE}/ruflo/cancel/{job_id}"))
+        .timeout(std::time::Duration::from_secs(2))
+        .send()
+        .await
+        .map_err(|e| format!("bridge unreachable: {e}"))?;
+    resp.json::<serde_json::Value>().await.map_err(|e| e.to_string())
+}
+
+#[derive(Debug, Serialize)]
+struct RufloRunSummary {
+    job_id: String,
+    exit_code: Option<i32>,
+}
+
+#[tauri::command]
+async fn ruflo_run(
+    window: WebviewWindow,
+    argv: Vec<String>,
+    event_name: String,
+) -> Result<RufloRunSummary, String> {
+    let client = ruflo_client()?;
+
+    // Step 1: start the job.
+    let start = client
+        .post(format!("{RUFLO_BASE}/ruflo/run"))
+        .json(&serde_json::json!({ "argv": argv }))
+        .timeout(std::time::Duration::from_secs(5))
+        .send()
+        .await
+        .map_err(|e| format!("bridge unreachable: {e}"))?;
+    if !start.status().is_success() {
+        let status = start.status();
+        let text = start.text().await.unwrap_or_default();
+        let msg = format!("HTTP {status}: {text}");
+        let _ = window.emit(
+            &event_name,
+            serde_json::json!({ "type": "error", "message": msg.clone() }),
+        );
+        return Err(msg);
+    }
+    let started: serde_json::Value = start.json().await.map_err(|e| e.to_string())?;
+    let job_id = started
+        .get("job_id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "bridge did not return a job_id".to_string())?
+        .to_string();
+
+    // Surface the job id immediately so the UI can enable Cancel before the
+    // SSE stream is fully drained (a full ruflo run can take minutes).
+    let _ = window.emit(
+        &event_name,
+        serde_json::json!({ "type": "started", "job_id": job_id }),
+    );
+
+    // Step 2: open the SSE stream for that job.
+    let mut resp = client
+        .get(format!("{RUFLO_BASE}/ruflo/stream/{job_id}"))
+        // No top-level timeout: streams can run for minutes. The bridge sends
+        // keepalive comments every 15s so the connection never goes idle.
+        .send()
+        .await
+        .map_err(|e| format!("stream open error: {e}"))?;
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        let msg = format!("HTTP {status}: {text}");
+        let _ = window.emit(
+            &event_name,
+            serde_json::json!({ "type": "error", "message": msg.clone() }),
+        );
+        return Err(msg);
+    }
+
+    // Step 3: drain the SSE stream, splitting on \n and forwarding `data:` JSON.
+    let mut buffer = String::new();
+    let mut exit_code: Option<i32> = None;
+
+    loop {
+        let chunk = match resp.chunk().await {
+            Ok(Some(c)) => c,
+            Ok(None) => break,
+            Err(e) => {
+                let msg = format!("stream error: {e}");
+                let _ = window.emit(
+                    &event_name,
+                    serde_json::json!({ "type": "error", "message": msg.clone() }),
+                );
+                return Err(msg);
+            }
+        };
+        buffer.push_str(&String::from_utf8_lossy(&chunk));
+
+        loop {
+            let Some(idx) = buffer.find('\n') else { break };
+            let line = buffer[..idx].trim().to_string();
+            buffer.drain(..=idx);
+            if line.is_empty() || line.starts_with(':') {
+                // SSE keepalive comment.
+                continue;
+            }
+            let Some(payload) = line.strip_prefix("data:") else {
+                continue;
+            };
+            let payload = payload.trim();
+            let Ok(json) = serde_json::from_str::<serde_json::Value>(payload) else {
+                continue;
+            };
+            // Forward the frame verbatim — the webview already understands the
+            // `type` discriminator from the bridge.
+            let _ = window.emit(&event_name, &json);
+            if json.get("type").and_then(|v| v.as_str()) == Some("done") {
+                exit_code = json.get("exit_code").and_then(|v| v.as_i64()).map(|n| n as i32);
+                return Ok(RufloRunSummary { job_id, exit_code });
+            }
+        }
+    }
+
+    // Stream closed without a `done` frame — surface as an error so the UI
+    // can re-enable Run.
+    let msg = "stream ended unexpectedly".to_string();
+    let _ = window.emit(
+        &event_name,
+        serde_json::json!({ "type": "error", "message": msg.clone() }),
+    );
+    Ok(RufloRunSummary { job_id, exit_code })
+}
+
 // ─── entrypoint ──────────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -479,6 +665,10 @@ pub fn run() {
             write_memory_entry,
             nvidia_list_models,
             nvidia_chat_stream,
+            ruflo_health,
+            ruflo_jobs,
+            ruflo_cancel,
+            ruflo_run,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
