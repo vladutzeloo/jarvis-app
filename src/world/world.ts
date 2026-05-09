@@ -1,8 +1,14 @@
-// World tab — a small 3D playground. A glowing wireframe core hovers in the
-// middle of a dark void; the camera orbits with mouse drag (left button) or
-// pinch (touch). Click anywhere to fire a cyan projectile from the camera
-// toward the click. Hits make the core bloom + bump a score counter, miss
-// projectiles fade out at range.
+// World tab — a small 3D playground. An Obsidian-purple "brain" hovers in
+// the middle of a dark void surrounded by orbiting memory nodes; a ring of
+// NPC pawns stand at the edge of the holodeck. The camera orbits with mouse
+// drag (left button) or pinch (touch).
+//
+// Click priority on pointer-up:
+//   1. NPC pawn   → launches that pawn's external app
+//   2. The brain  → launches Obsidian (obsidian:// → fallback obsidian.md)
+//   3. Empty space → fires a cyan projectile at the brain (existing game)
+// Hits on the brain make it bloom + bump a score counter, miss projectiles
+// fade out at range.
 
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -14,6 +20,8 @@ import {
   observeResize,
   onViewChange,
 } from "../three/engine";
+import { createNPCs, launchNPC } from "./npcs";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 const VIEW_NAME = "world";
 
@@ -53,12 +61,12 @@ export function initWorld(): void {
   controls.maxDistance = 22;
   controls.target.set(0, 0, 0);
 
-  // Lights
-  scene.add(new THREE.AmbientLight(0x223344, 0.6));
-  const key = new THREE.PointLight(0x5cd9ff, 1.4, 30, 1.4);
+  // Lights — cyan key + violet rim now that the centerpiece is Obsidian-purple
+  scene.add(new THREE.AmbientLight(0x252238, 0.6));
+  const key = new THREE.PointLight(0x5cd9ff, 1.2, 30, 1.4);
   key.position.set(4, 6, 4);
   scene.add(key);
-  const rim = new THREE.PointLight(0x3b82f6, 0.7, 25, 1.6);
+  const rim = new THREE.PointLight(0x9b6dff, 0.9, 25, 1.6);
   rim.position.set(-5, -2, -3);
   scene.add(rim);
 
@@ -69,14 +77,24 @@ export function initWorld(): void {
   grid.position.y = -2;
   scene.add(grid);
 
-  // Core: knot inside a wireframe icosahedron
+  // ─── Obsidian brain — the centerpiece. ──────────────────────────────────
+  //
+  // A glowing violet TorusKnot inside a wireframe icosahedron (Obsidian's
+  // logo is an icosahedron-shaped gem) with a cloud of "memory nodes"
+  // orbiting around it on tilted rings, evoking the Obsidian graph view.
+  // Clicking anywhere on the brain volume launches Obsidian.
+
+  const BRAIN_PURPLE = 0x9b6dff;
+  const BRAIN_DEEP = 0x4c1d95;
+  const BRAIN_LIGHT = 0xc4b5fd;
+
   const coreGroup = new THREE.Group();
   scene.add(coreGroup);
 
   const knotGeom = new THREE.TorusKnotGeometry(0.9, 0.28, 220, 32);
   const knotMat = new THREE.MeshStandardMaterial({
-    color: 0x5cd9ff,
-    emissive: 0x0a3a52,
+    color: BRAIN_PURPLE,
+    emissive: BRAIN_DEEP,
     emissiveIntensity: 0.6,
     metalness: 0.85,
     roughness: 0.18,
@@ -86,16 +104,62 @@ export function initWorld(): void {
 
   const cageGeom = new THREE.IcosahedronGeometry(1.85, 1);
   const cageMat = new THREE.MeshBasicMaterial({
-    color: 0x5cd9ff,
+    color: BRAIN_PURPLE,
     wireframe: true,
     transparent: true,
-    opacity: 0.35,
+    opacity: 0.45,
   });
   const cage = new THREE.Mesh(cageGeom, cageMat);
   coreGroup.add(cage);
 
-  // Hit sphere (slightly larger than the cage so aim feels generous)
+  // Memory nodes — sit on their own group at world origin so they don't
+  // inherit the cage/knot spin; we orbit them manually each frame for the
+  // "knowledge graph" vibe.
+  const memoryGroup = new THREE.Group();
+  scene.add(memoryGroup);
+
+  const NODE_COUNT = 16;
+  const memoryNodeGeom = new THREE.SphereGeometry(0.07, 10, 10);
+  const memoryNodeMat = new THREE.MeshBasicMaterial({ color: BRAIN_LIGHT });
+
+  interface MemoryNode {
+    mesh: THREE.Mesh;
+    angle: number;
+    radius: number;
+    tiltY: number;
+    tiltX: number;
+    speed: number;
+  }
+  const memoryNodes: MemoryNode[] = [];
+  for (let i = 0; i < NODE_COUNT; i++) {
+    const mesh = new THREE.Mesh(memoryNodeGeom, memoryNodeMat);
+    memoryGroup.add(mesh);
+    memoryNodes.push({
+      mesh,
+      angle: (i / NODE_COUNT) * Math.PI * 2 + Math.random() * 0.4,
+      radius: 2.25 + Math.random() * 0.35,
+      tiltY: (Math.random() - 0.5) * 0.9,
+      tiltX: (Math.random() - 0.5) * 0.5,
+      speed: 0.06 + Math.random() * 0.16,
+    });
+  }
+
+  // Thin connector lines from nodes back toward the core — keeps redrawing
+  // them per frame would be expensive, so we just animate the nodes and
+  // let the visual graph emerge from their motion. (If we want lines later,
+  // add a single LineSegments with positions updated in-place.)
+
+  // Click hit sphere — the central brain has a sphere-shaped hit area
+  // slightly larger than the cage so aim feels generous. Used for both
+  // projectile collision and brain-click detection.
   const HIT_RADIUS = 2.0;
+  const brainHitSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), HIT_RADIUS);
+
+  let brainHover = 0; // 0..1 envelope, lerped each frame
+
+  // NPC launchers — pawns around the core that open external apps when
+  // clicked. They share the scene's lights and don't need their own loop.
+  const npcsHandle = createNPCs(scene, camera, canvas);
 
   // Projectile pool
   const projectiles: Projectile[] = [];
@@ -105,22 +169,52 @@ export function initWorld(): void {
   let score = 0;
   let bloom = 0;
 
-  function fireFromPointer(ev: PointerEvent) {
-    if (ev.button !== undefined && ev.button !== 0) return;
+  // Reusable raycaster for both fire-projectile and brain hit-test paths.
+  const sharedRaycaster = new THREE.Raycaster();
+  const sharedNdc = new THREE.Vector2();
+
+  function setRayFromPointer(ev: PointerEvent) {
     const rect = canvas!.getBoundingClientRect();
-    const ndc = new THREE.Vector2(
+    sharedNdc.set(
       ((ev.clientX - rect.left) / rect.width) * 2 - 1,
       -((ev.clientY - rect.top) / rect.height) * 2 + 1,
     );
-    const ray = new THREE.Raycaster();
-    ray.setFromCamera(ndc, camera);
-    const dir = ray.ray.direction.clone().normalize();
+    sharedRaycaster.setFromCamera(sharedNdc, camera);
+  }
+
+  function rayHitsBrain(ev: PointerEvent): boolean {
+    setRayFromPointer(ev);
+    return sharedRaycaster.ray.intersectsSphere(brainHitSphere);
+  }
+
+  function fireFromPointer(ev: PointerEvent) {
+    if (ev.button !== undefined && ev.button !== 0) return;
+    setRayFromPointer(ev);
+    const dir = sharedRaycaster.ray.direction.clone().normalize();
     const origin = camera.position.clone().add(dir.clone().multiplyScalar(0.6));
     const m = new THREE.Mesh(projGeom, projMat);
     m.position.copy(origin);
     scene.add(m);
     projectiles.push({ mesh: m, velocity: dir.multiplyScalar(28), life: 1.6 });
     if (hintEl) hintEl.classList.add("dimmed");
+  }
+
+  /**
+   * Launch the Obsidian desktop app, falling back to the website if the
+   * `obsidian://` URI scheme isn't registered. Surfaces a brief flash on
+   * the brain so the click is never silent.
+   */
+  async function launchObsidian() {
+    bloom = Math.max(bloom, 0.7);
+    try {
+      await openUrl("obsidian://");
+    } catch {
+      try {
+        await openUrl("https://obsidian.md");
+      } catch (err2) {
+        console.warn("[world] obsidian launch failed:", err2);
+      }
+    }
   }
 
   // Drag-vs-click discrimination so OrbitControls drags don't fire shots.
@@ -136,10 +230,38 @@ export function initWorld(): void {
     const dt = performance.now() - downAt;
     const dx = ev.clientX - downX;
     const dy = ev.clientY - downY;
-    if (dt < 250 && Math.hypot(dx, dy) < 6) fireFromPointer(ev);
+    if (dt >= 250 || Math.hypot(dx, dy) >= 6) return;
+    // Click priority: NPC > brain > empty space (fire). Each launcher
+    // returns early so a click never both launches AND fires.
+    const npcHit = npcsHandle.raycastNPC(ev);
+    if (npcHit) {
+      void launchNPC(npcHit);
+      return;
+    }
+    if (rayHitsBrain(ev)) {
+      void launchObsidian();
+      return;
+    }
+    fireFromPointer(ev);
+  };
+  // Hover detection: cheap raycast against the 7 NPC groups + the brain.
+  // NPC takes priority over brain on overlap (NPCs are on the outer ring,
+  // brain is at center, so overlap only happens through the camera path).
+  let brainHovered = false;
+  const onMove = (ev: PointerEvent) => {
+    const npc = npcsHandle.raycastNPC(ev);
+    npcsHandle.setHover(npc);
+    if (npc) {
+      brainHovered = false;
+      canvas!.style.cursor = "pointer";
+      return;
+    }
+    brainHovered = rayHitsBrain(ev);
+    canvas!.style.cursor = brainHovered ? "pointer" : "crosshair";
   };
   canvas.addEventListener("pointerdown", onDown);
   canvas.addEventListener("pointerup", onUp);
+  canvas.addEventListener("pointermove", onMove);
 
   function setScore(n: number) {
     score = n;
@@ -157,8 +279,32 @@ export function initWorld(): void {
     cage.rotation.y -= dt * 0.6;
 
     bloom = Math.max(0, bloom - dt * 2.4);
-    knotMat.emissiveIntensity = 0.6 + bloom * 1.6;
-    cageMat.opacity = 0.35 + bloom * 0.5;
+    // Hover envelope — eases up to 1 while the cursor is over the brain,
+    // back to 0 otherwise. Adds a subtle pulse so the user can confirm
+    // the central object is interactive before clicking.
+    const brainHoverTarget = brainHovered ? 1 : 0;
+    brainHover += (brainHoverTarget - brainHover) * Math.min(1, dt * 8);
+
+    knotMat.emissiveIntensity = 0.6 + bloom * 1.6 + brainHover * 0.5;
+    cageMat.opacity = 0.45 + bloom * 0.45 + brainHover * 0.2;
+
+    // Orbit the memory nodes around the brain. Each one has its own tilt
+    // and speed so the cloud feels like a real graph rather than a ring.
+    for (let i = 0; i < memoryNodes.length; i++) {
+      const n = memoryNodes[i];
+      n.angle += dt * n.speed;
+      const x = Math.cos(n.angle) * n.radius;
+      const z = Math.sin(n.angle) * n.radius;
+      // tiltY pushes the orbit plane up/down per node; tiltX rolls it
+      n.mesh.position.set(
+        x,
+        Math.sin(n.angle) * n.tiltY * n.radius * 0.4 + n.tiltX * 0.5,
+        z,
+      );
+    }
+    // Slow drift on the whole memory cloud so it feels independent of the
+    // knot's rotation.
+    memoryGroup.rotation.y += dt * 0.05;
 
     for (let i = projectiles.length - 1; i >= 0; i--) {
       const p = projectiles[i];
@@ -177,6 +323,10 @@ export function initWorld(): void {
         projectiles.splice(i, 1);
       }
     }
+
+    // NPCs idle-bob and re-project their HTML labels each frame so they
+    // track the orbiting camera.
+    npcsHandle.step(dt);
 
     controls.update();
     renderer.render(scene, camera);
@@ -202,11 +352,15 @@ export function initWorld(): void {
       stopViewObs();
       canvas!.removeEventListener("pointerdown", onDown);
       canvas!.removeEventListener("pointerup", onUp);
+      canvas!.removeEventListener("pointermove", onMove);
+      npcsHandle.dispose();
       controls.dispose();
       knotGeom.dispose();
       knotMat.dispose();
       cageGeom.dispose();
       cageMat.dispose();
+      memoryNodeGeom.dispose();
+      memoryNodeMat.dispose();
       projGeom.dispose();
       projMat.dispose();
       renderer.dispose();
