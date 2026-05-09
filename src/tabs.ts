@@ -7,6 +7,7 @@ const input = document.getElementById("input") as HTMLTextAreaElement;
 const brainSearch = document.getElementById("brain-search") as HTMLInputElement;
 const agentsArgv = document.getElementById("agents-argv") as HTMLTextAreaElement | null;
 const vintedNew = document.getElementById("vinted-new") as HTMLButtonElement | null;
+const radioSearch = document.getElementById("radio-search-input") as HTMLInputElement | null;
 
 // Body flags consumed by the stylesheets:
 //   `.no-crt`        — suppress the CRT scanline + flicker overlay (it would
@@ -38,6 +39,7 @@ tabs.forEach(tab => {
     if (target === "brain") brainSearch.focus();
     if (target === "agents") agentsArgv?.focus();
     if (target === "vinted") vintedNew?.focus();
+    if (target === "radio") radioSearch?.focus();
   });
 });
 

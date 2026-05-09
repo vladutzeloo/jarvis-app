@@ -25,6 +25,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { buildVault, setVaultHover } from "./vault";
 import { buildCurrencyGraph } from "./graph";
 import { initDJ } from "./dj";
+import { initLibrarian } from "./librarian";
 import { stepFinanceSim } from "./finance";
 import { sfx } from "./sfx";
 import { initAudioHud } from "./audio-hud";
@@ -169,21 +170,29 @@ export async function initWorld(): Promise<void> {
 
   let brainHover = 0; // 0..1 envelope, lerped each frame
 
-  // ─── Money vault + currency graph + DJ ────────────────────────────────
+  // ─── Money vault + currency graph + DJ + Librarian ────────────────────
   // The vault lives on the left of the holodeck; the 3D currency graph
   // floats just above and behind it. The DJ joins the NPC ring as the 8th
   // pawn — its `onClick` opens the music dock instead of launching a URL.
+  // The Librarian is the 9th: its `onClick` opens an NVIDIA-backed console
+  // grounded in the user's local Obsidian vault.
   const vaultHandle = buildVault(scene);
   const graphHandle = buildCurrencyGraph(scene, new THREE.Vector3(-7.2, 0.5, -3.3));
   const djHandle = initDJ();
   initAudioHud();
+  const librarianHandle = initLibrarian();
 
-  // NPC launchers — 7 default pawns + the DJ as the 8th. createNPCs lays
-  // them out evenly on a ring so the spacing stays balanced.
+  // NPC launchers — 7 default pawns + DJ + Librarian. createNPCs lays them
+  // out evenly on a ring so the spacing stays balanced.
   const npcsHandle = createNPCs(scene, camera, canvas, [
     ...DEFAULT_NPCS,
     djHandle.npcConfig,
+    librarianHandle.npcConfig,
   ]);
+  // Decorate the librarian's pawn with an open book so on the map they're
+  // visibly reading. Done post-createNPCs because the visual hangs off the
+  // NPC's group (createNPCs builds every body from shared geometry).
+  librarianHandle.attachVisual(npcsHandle.npcs);
   // Register NPC physics sensors now that positions are known.
   npcsHandle.npcs.forEach((npc, i) => addNPCSensor(npc.group.position, i));
 
@@ -395,6 +404,7 @@ export async function initWorld(): Promise<void> {
     stepFinanceSim(performance.now());
     graphHandle.step();
     djHandle.step();
+    librarianHandle.step(dt);
 
     controls.update();
     renderer.render(scene, camera);
@@ -421,6 +431,10 @@ export async function initWorld(): Promise<void> {
       canvas!.removeEventListener("pointerdown", onDown);
       canvas!.removeEventListener("pointerup", onUp);
       canvas!.removeEventListener("pointermove", onMove);
+      // Tear the librarian's book off the NPC group BEFORE npcsHandle.dispose
+      // removes the parent group from the scene — the order matters because
+      // npcsHandle.dispose() doesn't know about externally-attached children.
+      librarianHandle.dispose();
       npcsHandle.dispose();
       vaultHandle.dispose();
       graphHandle.dispose();

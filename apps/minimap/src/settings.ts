@@ -3,6 +3,9 @@ export interface Settings {
   ollamaModel: string;
   pollMs: number;
   followLogs: boolean;
+  orcEnabled: boolean;
+  orcModel: string;
+  orcIntervalS: number;
 }
 
 const KEY = "jarvis-minimap.settings";
@@ -12,6 +15,9 @@ const DEFAULTS: Settings = {
   ollamaModel: "llama3.2",
   pollMs: 2000,
   followLogs: true,
+  orcEnabled: true,
+  orcModel: "qwen2.5-coder:latest",
+  orcIntervalS: 180,
 };
 
 export function loadSettings(): Settings {

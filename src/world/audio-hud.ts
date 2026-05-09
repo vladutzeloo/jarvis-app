@@ -7,14 +7,14 @@
 // State is persisted through sfx.ts / dj.ts which each write localStorage.
 
 import { setMuted, isMuted, setVolume, getVolume } from "./sfx";
-import { setMusicVolume, getMusicVolume } from "./dj";
+import { djSetVolume, djGetVolume } from "./dj";
 
 export function initAudioHud(): void {
   const container = document.getElementById("world-audio-hud");
   if (!container) return;
 
   const sfxPct   = Math.round(getVolume() * 100);
-  const musPct   = Math.round(getMusicVolume() * 100);
+  const musPct   = Math.round(djGetVolume() * 100);
 
   container.innerHTML = `
     <div class="wah-title">
@@ -55,7 +55,7 @@ export function initAudioHud(): void {
 
   musSlider.addEventListener("input", () => {
     const v = parseInt(musSlider.value, 10);
-    setMusicVolume(v / 100);
+    djSetVolume(v / 100);
     musVal.textContent = String(v);
   });
 }

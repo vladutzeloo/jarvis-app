@@ -31,3 +31,6 @@ __pycache__/
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code worktrees (large, machine-specific)
+.claude

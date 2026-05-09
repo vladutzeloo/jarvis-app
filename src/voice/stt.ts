@@ -9,6 +9,7 @@
 import { addSystem } from "../chat/messages";
 import { send } from "../chat/chat";
 import { PIPER_BASE } from "../types";
+import { tryRadioVoiceCommand, isRadioVoiceActive } from "../radio/radio";
 
 const micBtn = document.getElementById("mic") as HTMLButtonElement;
 const input = document.getElementById("input") as HTMLTextAreaElement;
@@ -129,6 +130,24 @@ async function transcribeAndSend(mime: string): Promise<void> {
       addSystem("(no speech detected)");
       return;
     }
+
+    // Voice command interception. Radio commands ("play synthwave", "next",
+    // "pause", "volume up", etc.) get routed to the radio engine instead of
+    // the chat model when the Radio tab is active OR voice-cmd is toggled
+    // on. Recognises an optional "jarvis," wake-word so commands work from
+    // any tab.
+    const radioOn = isRadioVoiceActive() ||
+                    document.querySelector('.view[data-view="radio"]')?.classList.contains("active");
+    if (radioOn) {
+      let phrase = cleaned;
+      const m = /^(?:hey\s+)?jarvis[,:\s]+(.+)$/i.exec(cleaned);
+      if (m) phrase = m[1].trim();
+      if (tryRadioVoiceCommand(phrase)) {
+        addSystem(`radio command: "${phrase}"`);
+        return;
+      }
+    }
+
     input.value = cleaned;
     input.dispatchEvent(new Event("input"));
     send();

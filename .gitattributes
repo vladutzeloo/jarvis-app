@@ -1,0 +1,56 @@
+# Normalize line endings across Windows / WSL / Linux contributors.
+# Without this, every cross-OS edit shows the whole file as "modified".
+#
+# Default: any text file is stored with LF in the repo and checked out as LF
+# on disk. Editors on Windows handle LF fine these days; if you actively
+# need CRLF locally, change `eol=lf` to `eol=crlf` here (don't switch
+# autocrlf in your global git config — keep it in-repo so all clones agree).
+
+* text=auto eol=lf
+
+# Shell scripts must stay LF even on Windows checkouts (WSL/Git Bash run them).
+*.sh         text eol=lf
+*.bash       text eol=lf
+
+# Windows-only scripts: keep CRLF so cmd.exe/PowerShell parse them cleanly.
+*.cmd        text eol=crlf
+*.bat        text eol=crlf
+*.ps1        text eol=crlf
+*.vbs        text eol=crlf
+
+# Source / config — explicit just to be safe.
+*.ts         text eol=lf
+*.tsx        text eol=lf
+*.js         text eol=lf
+*.jsx        text eol=lf
+*.mjs        text eol=lf
+*.cjs        text eol=lf
+*.json       text eol=lf
+*.html       text eol=lf
+*.css        text eol=lf
+*.md         text eol=lf
+*.py         text eol=lf
+*.rs         text eol=lf
+*.toml       text eol=lf
+*.yaml       text eol=lf
+*.yml        text eol=lf
+
+# Binary — never touch these.
+*.png        binary
+*.jpg        binary
+*.jpeg       binary
+*.gif        binary
+*.ico        binary
+*.icns       binary
+*.svg        text eol=lf
+*.woff       binary
+*.woff2      binary
+*.ttf        binary
+*.otf        binary
+*.wasm       binary
+*.task       binary
+*.mp3        binary
+*.mp4        binary
+*.wav        binary
+*.ogg        binary
+*.pdf        binary

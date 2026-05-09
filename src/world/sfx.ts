@@ -101,6 +101,10 @@ export const sfx = {
     blip(880, 0.06, { type: "square", vol: 0.10 });
     setTimeout(() => blip(1320, 0.08, { type: "square", vol: 0.10 }), 50);
   },
+  whoosh()   { blip(320, 0.12, { type: "sawtooth", vol: 0.08, freqEnd: 80 }); },
+  plock()    { blip(1200, 0.05, { type: "sine", vol: 0.09, freqEnd: 600 }); },
+  zip()      { blip(900, 0.06, { type: "square", vol: 0.07, freqEnd: 1400 }); },
+  pop()      { blip(440, 0.04, { type: "sine", vol: 0.12, freqEnd: 220 }); },
 };
 
 // ─── Lifecycle ─────────────────────────────────────────────────────────────
