@@ -17,6 +17,7 @@ import {
   observeResize,
   onViewChange,
 } from "../three/engine";
+import { createBloomComposer } from "../three/post";
 
 const VIEW_NAME = "brain";
 
@@ -50,6 +51,18 @@ export function initBrainViz3D(): void {
 
   const renderer = makeRenderer(canvas, true);
   renderer.setClearColor(0x000000, 0);
+
+  // HDR bloom on the core, halo, and matched/firing nodes. We push the
+  // intensity above the base level whenever nodes are firing so the viz
+  // visibly "lights up" while the chat is busy or during search highlights.
+  const post = createBloomComposer(renderer, scene, camera, {
+    intensity: 0.7,
+    luminanceThreshold: 0.45,
+    luminanceSmoothing: 0.2,
+  });
+  const BLOOM_BASE = 0.7;
+  const BLOOM_PER_FIRE = 0.09;
+  const BLOOM_MAX = 1.6;
 
   // Core glow: bright sphere + soft sprite halo
   const coreMat = new THREE.MeshBasicMaterial({ color: 0x5cd9ff });
@@ -170,20 +183,31 @@ export function initBrainViz3D(): void {
     headerObserver.observe(headerEl, { attributes: true, attributeFilter: ["class"] });
   }
 
-  const fit = () => fitRenderer(renderer, camera, container);
+  const fit = () => {
+    fitRenderer(renderer, camera, container);
+    post.setSize(container.clientWidth, container.clientHeight);
+  };
   const loop = createLoop((dt, t) => {
     halo.scale.setScalar(1 + Math.sin(t * 1.6) * 0.06);
     coreMat.color.setHSL(0.54, 0.9, 0.6 + Math.sin(t * 2.2) * 0.05);
 
+    let liveCount = 0;
+    const now = performance.now();
     for (const n of nodes) {
       n.base.applyAxisAngle(n.axis, dt * n.speed);
       n.mesh.position.copy(n.base);
-      const firing = performance.now() < n.fireUntil;
+      const firing = now < n.fireUntil;
+      if (firing || n.matched) liveCount++;
       const target = n.matched || firing ? 1.6 : 1.0;
       n.mesh.scale.lerp(new THREE.Vector3(target, target, target), 0.18);
     }
 
-    renderer.render(scene, camera);
+    // Bloom intensity follows live nodes, smoothed so it feels organic
+    // rather than stepping each frame.
+    const wantedIntensity = Math.min(BLOOM_MAX, BLOOM_BASE + liveCount * BLOOM_PER_FIRE);
+    post.bloom.intensity += (wantedIntensity - post.bloom.intensity) * Math.min(1, dt * 6);
+
+    post.composer.render(dt);
   }, {
     isVisible: () => isViewActive(VIEW_NAME) && container.classList.contains("viz3d-on"),
   });
@@ -253,6 +277,7 @@ export function initBrainViz3D(): void {
       coreMat.dispose();
       haloMat.dispose();
       ringMat.dispose();
+      post.dispose();
       renderer.dispose();
     },
   };
