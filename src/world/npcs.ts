@@ -18,7 +18,9 @@ export interface NPCConfig {
   name: string;
   color: number;
   // Primary launch target — a URL or registered URI scheme. Tried first.
-  primary: string;
+  // Optional only when `onClick` is supplied (e.g. the DJ NPC opens an
+  // in-app dock instead of an external URL).
+  primary?: string;
   // Optional fallback (usually a web URL) tried if the primary fails. This
   // covers the case where a custom URI scheme isn't registered on the host.
   fallback?: string;
@@ -26,6 +28,10 @@ export interface NPCConfig {
   openWith?: string;
   // Pixel-art tag shown beneath the name in the floating label.
   tag: string;
+  // Optional custom click handler — overrides openUrl entirely. Used by
+  // NPCs that drive in-app behaviour (e.g. opening the DJ dock) rather
+  // than launching an external app.
+  onClick?: (npc: NPC) => void | Promise<void>;
 }
 
 export interface NPC {
@@ -49,10 +55,9 @@ export interface NPCsHandle {
   dispose(): void;
 }
 
-// One source of truth for the NPC roster. Adding another NPC is a single
-// row here plus an entry in NPC_RING_RADIUS / FLOOR_Y if you want a layout
-// tweak.
-const NPC_DATA: NPCConfig[] = [
+// Default NPC roster. world.ts can pass extra configs (e.g. the DJ) via the
+// last parameter to createNPCs so each new NPC type stays self-contained.
+export const DEFAULT_NPCS: NPCConfig[] = [
   { id: "claude",  name: "Claude",         tag: "ANTHROPIC", color: 0xcc785c, primary: "https://claude.ai" },
   { id: "vscode",  name: "VS Code",        tag: "EDITOR",    color: 0x007acc, primary: "vscode://", fallback: "https://code.visualstudio.com" },
   { id: "github",  name: "GitHub Desktop", tag: "REPO SYNC", color: 0xb0b6c0, primary: "x-github-client://", fallback: "https://desktop.github.com" },
@@ -69,6 +74,7 @@ export function createNPCs(
   scene: THREE.Scene,
   camera: THREE.PerspectiveCamera,
   canvas: HTMLCanvasElement,
+  configs: NPCConfig[] = DEFAULT_NPCS,
 ): NPCsHandle {
   const labelLayer = document.createElement("div");
   labelLayer.className = "world-npc-labels";
@@ -83,10 +89,10 @@ export function createNPCs(
   const headGeom = new THREE.SphereGeometry(0.16, 18, 18);
   const antGeom = new THREE.SphereGeometry(0.045, 10, 10);
 
-  const npcs: NPC[] = NPC_DATA.map((cfg, i) => {
+  const npcs: NPC[] = configs.map((cfg, i) => {
     // Lay them out on a ring, starting at "12 o'clock" so the first NPC is
     // visible without orbiting.
-    const angle = (i / NPC_DATA.length) * Math.PI * 2 - Math.PI / 2;
+    const angle = (i / configs.length) * Math.PI * 2 - Math.PI / 2;
     const x = Math.cos(angle) * NPC_RING_RADIUS;
     const z = Math.sin(angle) * NPC_RING_RADIUS;
 
@@ -233,9 +239,14 @@ export function createNPCs(
 }
 
 /**
- * Try to launch an NPC's external app. Returns true on success, false if
- * both the primary and fallback failed. Sets a small status flag on the NPC
- * label that the next animation frame will surface to the user.
+ * Try to activate an NPC.
+ *
+ * - If the NPC has an `onClick` handler, that runs and we return true. This
+ *   is how in-app NPCs (e.g. the DJ) opt out of openUrl entirely.
+ * - Otherwise we open `primary`, falling back to `fallback` on failure so
+ *   the click is never a no-op when a custom URI scheme isn't registered.
+ *
+ * In all cases we flash the pawn and surface a brief status on the label.
  */
 export async function launchNPC(npc: NPC): Promise<boolean> {
   npc.flashUntil = performance.now() + 600;
@@ -248,6 +259,23 @@ export async function launchNPC(npc: NPC): Promise<boolean> {
       }, ttl);
     }
   };
+
+  if (npc.cfg.onClick) {
+    try {
+      await npc.cfg.onClick(npc);
+      setStatus("OPEN");
+      return true;
+    } catch (err) {
+      console.warn(`[npcs] onClick failed for ${npc.cfg.id}:`, err);
+      setStatus("FAILED");
+      return false;
+    }
+  }
+
+  if (!npc.cfg.primary) {
+    setStatus("NO TARGET");
+    return false;
+  }
 
   const tryOpen = (url: string) => openUrl(url, npc.cfg.openWith);
 

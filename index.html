@@ -547,8 +547,14 @@
           </div>
         </div>
         <div class="world-hint" id="world-hint">
-          Drag to orbit · click NPC to launch app · click brain for Obsidian · click empty space to fire
+          Drag to orbit · click NPC to launch · click brain for Obsidian · click vault for finances · click empty space to fire
         </div>
+
+        <!-- Money vault HUD overlay (modal-ish; built by src/world/vault.ts) -->
+        <div id="vault-hud" class="vault-hud hidden" aria-hidden="true"></div>
+
+        <!-- DJ "now playing" dock (bottom-right; built by src/world/dj.ts) -->
+        <div id="dj-dock" class="dj-dock hidden" aria-hidden="true"></div>
       </div>
     </section>
 

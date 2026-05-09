@@ -185,3 +185,363 @@
 
 .brain-viz.viz3d-on .brain-viz-svg { visibility: hidden; }
 .brain-viz.viz3d-on .brain-viz-3d  { display: block; }
+
+/* ─── Money Vault HUD ───────────────────────────────────────────────────── */
+
+.vault-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+}
+
+.vault-hud-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 8, 13, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.vault-hud-panel {
+  position: relative;
+  width: min(520px, calc(100% - 40px));
+  max-height: calc(100% - 40px);
+  overflow: auto;
+  background:
+    radial-gradient(ellipse at top left, rgba(92, 217, 255, 0.10), transparent 60%),
+    rgba(8, 12, 20, 0.95);
+  border: 1px solid var(--accent);
+  box-shadow:
+    0 0 0 1px var(--accent-soft),
+    0 0 32px var(--accent-glow),
+    0 0 80px rgba(92, 217, 255, 0.15);
+}
+
+.vault-hud-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, rgba(92, 217, 255, 0.18), transparent);
+  border-bottom: 1px solid var(--accent-soft);
+}
+
+.vault-hud-title {
+  font-family: var(--font-pixel, var(--font-mono));
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  color: var(--accent);
+  text-shadow: 0 0 8px var(--accent-glow);
+}
+
+.vault-hud-close {
+  background: transparent;
+  border: 1px solid var(--accent-soft);
+  color: var(--fg);
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.vault-hud-close:hover { border-color: var(--accent); color: var(--accent); }
+
+.vault-hud-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 16px;
+}
+
+.vault-hud-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vault-hud-label {
+  font-family: var(--font-pixel, var(--font-mono));
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  color: var(--fg-dim);
+}
+
+.vault-hud-row input {
+  background: rgba(8, 12, 20, 0.8);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 18px;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.vault-hud-row input:focus {
+  border-color: var(--accent);
+  background: rgba(8, 12, 20, 1);
+  box-shadow: 0 0 0 1px var(--accent-soft);
+}
+
+.vault-hud-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(8, 12, 20, 0.65);
+  border: 1px solid var(--border);
+}
+
+.vault-hud-summary-cell { display: flex; flex-direction: column; gap: 4px; }
+
+.vault-hud-summary-label {
+  font-family: var(--font-pixel, var(--font-mono));
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  color: var(--fg-dim);
+}
+
+.vault-hud-summary-value {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+.vault-hud-summary-value.positive {
+  color: #3fb950;
+  text-shadow: 0 0 8px rgba(63, 185, 80, 0.4);
+}
+.vault-hud-summary-value.negative {
+  color: var(--error);
+  text-shadow: 0 0 8px rgba(248, 81, 73, 0.4);
+}
+
+.vault-hud-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.vault-hud-rates {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: rgba(8, 12, 20, 0.55);
+  border: 1px solid var(--border);
+}
+
+.vault-hud-rates-title {
+  font-family: var(--font-pixel, var(--font-mono));
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  color: var(--fg-dim);
+}
+
+.vault-hud-rates-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  list-style: none;
+  margin: 0; padding: 0;
+}
+
+.vault-hud-rate {
+  display: grid;
+  grid-template-columns: 12px 32px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vault-hud-rate-swatch {
+  width: 8px; height: 8px;
+  display: inline-block;
+  border-radius: 1px;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.vault-hud-rate-code  { color: var(--fg-muted); letter-spacing: 0.1em; }
+.vault-hud-rate-price { color: var(--fg); }
+.vault-hud-rate-change { color: var(--fg-dim); font-size: 10px; }
+
+.vault-hud-rate.up   .vault-hud-rate-change { color: #3fb950; }
+.vault-hud-rate.down .vault-hud-rate-change { color: var(--error); }
+
+.vault-hud-rates-hint {
+  font-size: 10px;
+  color: var(--fg-dim);
+  font-style: italic;
+}
+
+/* ─── DJ Dock ───────────────────────────────────────────────────────────── */
+
+.dj-dock {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 4;
+  width: min(360px, calc(100% - 36px));
+  font-family: var(--font-mono);
+  pointer-events: none; /* re-enable on the card */
+}
+
+.dj-dock-card {
+  background: rgba(8, 12, 20, 0.94);
+  border: 1px solid var(--accent);
+  box-shadow:
+    0 0 0 1px var(--accent-soft),
+    0 0 24px var(--accent-glow);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.dj-dock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dj-dock-title {
+  font-family: var(--font-pixel, var(--font-mono));
+  font-size: 9px;
+  letter-spacing: 0.28em;
+  color: var(--accent);
+  text-shadow: 0 0 6px var(--accent-glow);
+}
+
+.dj-dock-close {
+  background: transparent;
+  border: 1px solid var(--accent-soft);
+  color: var(--fg);
+  width: 22px; height: 22px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+.dj-dock-close:hover { border-color: var(--accent); color: var(--accent); }
+
+.dj-dock-track {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.dj-dock-art {
+  width: 56px;
+  height: 56px;
+  background:
+    repeating-linear-gradient(45deg,
+      rgba(92, 217, 255, 0.08),
+      rgba(92, 217, 255, 0.08) 4px,
+      transparent 4px, transparent 8px),
+    rgba(8, 12, 20, 0.6);
+  background-size: cover;
+  background-position: center;
+  border: 1px solid var(--accent-soft);
+}
+
+.dj-dock-art.has-art {
+  background-blend-mode: normal;
+}
+
+.dj-dock-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.dj-dock-track-title {
+  font-size: 13px;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dj-dock-track-artist {
+  font-size: 11px;
+  color: var(--fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dj-dock-track-status {
+  font-family: var(--font-pixel, var(--font-mono));
+  font-size: 7px;
+  letter-spacing: 0.24em;
+  color: var(--accent);
+  text-shadow: 0 0 4px var(--accent-glow);
+}
+.dj-dock-track-status.error { color: var(--error); text-shadow: none; }
+
+.dj-dock-vis {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 2px;
+  align-items: end;
+  height: 36px;
+  padding: 0 2px;
+  background: rgba(8, 12, 20, 0.6);
+  border: 1px solid var(--border);
+}
+
+.dj-dock-vis-bar {
+  display: block;
+  height: 100%;
+  background: linear-gradient(180deg, var(--accent), #ff8c00);
+  transform-origin: bottom;
+  transform: scaleY(0.05);
+  transition: transform 0.05s linear;
+}
+
+.dj-dock-controls {
+  display: grid;
+  grid-template-columns: 36px 36px 1fr 36px;
+  gap: 6px;
+  align-items: center;
+}
+
+.dj-dock-controls button {
+  background: rgba(31, 38, 48, 0.7);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  height: 32px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.dj-dock-controls button:hover {
+  border-color: var(--accent);
+  background: rgba(92, 217, 255, 0.08);
+}
+
+.dj-dock-controls input {
+  background: rgba(8, 12, 20, 0.8);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  height: 32px;
+  padding: 0 10px;
+  outline: none;
+}
+.dj-dock-controls input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-soft);
+}
+
+.dj-dock-hint {
+  font-size: 10px;
+  color: var(--fg-dim);
+  font-style: italic;
+}

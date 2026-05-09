@@ -20,8 +20,13 @@ import {
   observeResize,
   onViewChange,
 } from "../three/engine";
-import { createNPCs, launchNPC } from "./npcs";
+import { createNPCs, DEFAULT_NPCS, launchNPC } from "./npcs";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { buildVault, setVaultHover } from "./vault";
+import { buildCurrencyGraph } from "./graph";
+import { initDJ } from "./dj";
+import { stepFinanceSim } from "./finance";
+import { sfx } from "./sfx";
 
 const VIEW_NAME = "world";
 
@@ -157,9 +162,20 @@ export function initWorld(): void {
 
   let brainHover = 0; // 0..1 envelope, lerped each frame
 
-  // NPC launchers — pawns around the core that open external apps when
-  // clicked. They share the scene's lights and don't need their own loop.
-  const npcsHandle = createNPCs(scene, camera, canvas);
+  // ─── Money vault + currency graph + DJ ────────────────────────────────
+  // The vault lives on the left of the holodeck; the 3D currency graph
+  // floats just above and behind it. The DJ joins the NPC ring as the 8th
+  // pawn — its `onClick` opens the music dock instead of launching a URL.
+  const vaultHandle = buildVault(scene);
+  const graphHandle = buildCurrencyGraph(scene, new THREE.Vector3(-7.2, 0.5, -3.3));
+  const djHandle = initDJ();
+
+  // NPC launchers — 7 default pawns + the DJ as the 8th. createNPCs lays
+  // them out evenly on a ring so the spacing stays balanced.
+  const npcsHandle = createNPCs(scene, camera, canvas, [
+    ...DEFAULT_NPCS,
+    djHandle.npcConfig,
+  ]);
 
   // Projectile pool
   const projectiles: Projectile[] = [];
@@ -187,6 +203,11 @@ export function initWorld(): void {
     return sharedRaycaster.ray.intersectsSphere(brainHitSphere);
   }
 
+  function rayHitsVault(ev: PointerEvent): boolean {
+    setRayFromPointer(ev);
+    return vaultHandle.rayHits(sharedRaycaster);
+  }
+
   function fireFromPointer(ev: PointerEvent) {
     if (ev.button !== undefined && ev.button !== 0) return;
     setRayFromPointer(ev);
@@ -206,6 +227,7 @@ export function initWorld(): void {
    */
   async function launchObsidian() {
     bloom = Math.max(bloom, 0.7);
+    sfx.launch();
     try {
       await openUrl("obsidian://");
     } catch {
@@ -231,10 +253,11 @@ export function initWorld(): void {
     const dx = ev.clientX - downX;
     const dy = ev.clientY - downY;
     if (dt >= 250 || Math.hypot(dx, dy) >= 6) return;
-    // Click priority: NPC > brain > empty space (fire). Each launcher
-    // returns early so a click never both launches AND fires.
+    // Click priority: NPC > brain > vault > empty space (fire). Each
+    // launcher returns early so a click never both launches AND fires.
     const npcHit = npcsHandle.raycastNPC(ev);
     if (npcHit) {
+      sfx.click();
       void launchNPC(npcHit);
       return;
     }
@@ -242,22 +265,40 @@ export function initWorld(): void {
       void launchObsidian();
       return;
     }
+    if (rayHitsVault(ev)) {
+      vaultHandle.openHud();
+      return;
+    }
     fireFromPointer(ev);
+    sfx.click();
   };
-  // Hover detection: cheap raycast against the 7 NPC groups + the brain.
-  // NPC takes priority over brain on overlap (NPCs are on the outer ring,
-  // brain is at center, so overlap only happens through the camera path).
+  // Hover detection: cheap raycast against NPC groups + brain + vault.
+  // Cursor priority follows the click priority above so the user can tell
+  // what's about to happen.
   let brainHovered = false;
+  let lastNpcHover: ReturnType<typeof npcsHandle.raycastNPC> = null;
   const onMove = (ev: PointerEvent) => {
     const npc = npcsHandle.raycastNPC(ev);
     npcsHandle.setHover(npc);
+    if (npc !== lastNpcHover) {
+      if (npc) sfx.hover();
+      lastNpcHover = npc;
+    }
     if (npc) {
       brainHovered = false;
+      setVaultHover(vaultHandle, false);
       canvas!.style.cursor = "pointer";
       return;
     }
     brainHovered = rayHitsBrain(ev);
-    canvas!.style.cursor = brainHovered ? "pointer" : "crosshair";
+    if (brainHovered) {
+      setVaultHover(vaultHandle, false);
+      canvas!.style.cursor = "pointer";
+      return;
+    }
+    const vaultHovered = rayHitsVault(ev);
+    setVaultHover(vaultHandle, vaultHovered);
+    canvas!.style.cursor = vaultHovered ? "pointer" : "crosshair";
   };
   canvas.addEventListener("pointerdown", onDown);
   canvas.addEventListener("pointerup", onUp);
@@ -314,6 +355,7 @@ export function initWorld(): void {
       if (tmp.length() < HIT_RADIUS) {
         bloom = 1;
         setScore(score + 1);
+        sfx.hit();
         scene.remove(p.mesh);
         projectiles.splice(i, 1);
         continue;
@@ -327,6 +369,14 @@ export function initWorld(): void {
     // NPCs idle-bob and re-project their HTML labels each frame so they
     // track the orbiting camera.
     npcsHandle.step(dt);
+
+    // Vault dial spin + on-vault screen pulse; currency rates random-walk
+    // and re-feed the 3D graph; DJ dock visualizer reads from the audio
+    // analyser.
+    vaultHandle.step(dt);
+    stepFinanceSim(performance.now());
+    graphHandle.step();
+    djHandle.step();
 
     controls.update();
     renderer.render(scene, camera);
@@ -354,6 +404,9 @@ export function initWorld(): void {
       canvas!.removeEventListener("pointerup", onUp);
       canvas!.removeEventListener("pointermove", onMove);
       npcsHandle.dispose();
+      vaultHandle.dispose();
+      graphHandle.dispose();
+      djHandle.dispose();
       controls.dispose();
       knotGeom.dispose();
       knotMat.dispose();
