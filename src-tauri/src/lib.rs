@@ -278,37 +278,38 @@ async fn web_search(query: String, max_results: Option<u32>) -> Result<WebSearch
         return Err(format!("Tavily HTTP {status}: {text}"));
     }
 
-    let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
-    let answer = json
-        .get("answer")
-        .and_then(|v| v.as_str())
-        .filter(|s| !s.is_empty())
-        .map(String::from);
-
-    let mut hits = Vec::new();
-    if let Some(arr) = json.get("results").and_then(|v| v.as_array()) {
-        for r in arr {
-            let title = r
-                .get("title")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-            let url = r
-                .get("url")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-            let snippet = r
-                .get("content")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-            let score = r.get("score").and_then(|v| v.as_f64());
-            if !url.is_empty() {
-                hits.push(WebHit { title, url, snippet, score });
-            }
-        }
+    #[derive(Deserialize)]
+    struct TavilyResponse {
+        #[serde(default)]
+        answer: Option<String>,
+        #[serde(default)]
+        results: Vec<TavilyResult>,
     }
+    #[derive(Deserialize)]
+    struct TavilyResult {
+        #[serde(default)]
+        title: String,
+        #[serde(default)]
+        url: String,
+        #[serde(default)]
+        content: String,
+        #[serde(default)]
+        score: Option<f64>,
+    }
+
+    let parsed: TavilyResponse = resp.json().await.map_err(|e| e.to_string())?;
+    let answer = parsed.answer.filter(|s| !s.is_empty());
+    let hits = parsed
+        .results
+        .into_iter()
+        .filter(|r| !r.url.is_empty())
+        .map(|r| WebHit {
+            title: r.title,
+            url: r.url,
+            snippet: r.content,
+            score: r.score,
+        })
+        .collect();
 
     Ok(WebSearchResult { query: q.to_string(), answer, hits })
 }
