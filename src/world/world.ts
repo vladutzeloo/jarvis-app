@@ -14,6 +14,7 @@ import {
   observeResize,
   onViewChange,
 } from "../three/engine";
+import { createNPCs, launchNPC } from "./npcs";
 
 const VIEW_NAME = "world";
 
@@ -97,6 +98,10 @@ export function initWorld(): void {
   // Hit sphere (slightly larger than the cage so aim feels generous)
   const HIT_RADIUS = 2.0;
 
+  // NPC launchers — pawns around the core that open external apps when
+  // clicked. They share the scene's lights and don't need their own loop.
+  const npcsHandle = createNPCs(scene, camera, canvas);
+
   // Projectile pool
   const projectiles: Projectile[] = [];
   const projGeom = new THREE.SphereGeometry(0.07, 12, 12);
@@ -136,10 +141,25 @@ export function initWorld(): void {
     const dt = performance.now() - downAt;
     const dx = ev.clientX - downX;
     const dy = ev.clientY - downY;
-    if (dt < 250 && Math.hypot(dx, dy) < 6) fireFromPointer(ev);
+    if (dt >= 250 || Math.hypot(dx, dy) >= 6) return;
+    // NPC click takes precedence over firing — clicking a pawn launches its
+    // app instead of shooting a projectile through it.
+    const hit = npcsHandle.raycastNPC(ev);
+    if (hit) {
+      void launchNPC(hit);
+      return;
+    }
+    fireFromPointer(ev);
+  };
+  // Hover detection: cheap raycast against the 7 NPC groups every move.
+  const onMove = (ev: PointerEvent) => {
+    const npc = npcsHandle.raycastNPC(ev);
+    npcsHandle.setHover(npc);
+    canvas!.style.cursor = npc ? "pointer" : "crosshair";
   };
   canvas.addEventListener("pointerdown", onDown);
   canvas.addEventListener("pointerup", onUp);
+  canvas.addEventListener("pointermove", onMove);
 
   function setScore(n: number) {
     score = n;
@@ -178,6 +198,10 @@ export function initWorld(): void {
       }
     }
 
+    // NPCs idle-bob and re-project their HTML labels each frame so they
+    // track the orbiting camera.
+    npcsHandle.step(dt);
+
     controls.update();
     renderer.render(scene, camera);
   }, {
@@ -202,6 +226,8 @@ export function initWorld(): void {
       stopViewObs();
       canvas!.removeEventListener("pointerdown", onDown);
       canvas!.removeEventListener("pointerup", onUp);
+      canvas!.removeEventListener("pointermove", onMove);
+      npcsHandle.dispose();
       controls.dispose();
       knotGeom.dispose();
       knotMat.dispose();
