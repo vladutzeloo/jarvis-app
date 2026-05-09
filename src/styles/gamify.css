@@ -44,6 +44,10 @@ body::after {
 body.no-crt::before,
 body.no-crt::after {
   opacity: 0;
+  /* CSS animations win over class-based opacity rules for animated
+     properties — without disabling the keyframe the flicker on ::after
+     would keep overriding our opacity: 0. */
+  animation: none;
 }
 
 @keyframes crt-flicker {

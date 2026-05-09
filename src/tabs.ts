@@ -19,10 +19,13 @@ function applyChromeFlags(target: string) {
   const body = document.body;
   body.classList.toggle("world-active", target === "world");
 
-  // Brain 3D mode toggles `.viz3d-on` on `.brain-viz`; we read that to
-  // decide whether to suppress the CRT overlay. Default to off.
-  const brainViz3DOn = !!document.querySelector(".brain-viz.viz3d-on");
-  body.classList.toggle("no-crt", target === "world" || (target === "brain" && brainViz3DOn));
+  // Suppress CRT on World always, or on Brain when its 3D mode is active.
+  // Short-circuit so the DOM query only runs on the Brain tab — otherwise
+  // every tab switch pays for a `.brain-viz.viz3d-on` lookup that can
+  // never matter.
+  const noCrt = target === "world"
+    || (target === "brain" && !!document.querySelector(".brain-viz.viz3d-on"));
+  body.classList.toggle("no-crt", noCrt);
 }
 
 tabs.forEach(tab => {
@@ -44,11 +47,14 @@ const initialActive = document.querySelector<HTMLElement>(".view.active");
 if (initialActive?.dataset.view) applyChromeFlags(initialActive.dataset.view);
 
 // Keep the no-crt flag in sync if the Brain 3D toggle flips while the
-// Brain tab is active.
+// Brain tab is active. The brain-viz class also mutates while the user
+// is on other tabs (during indexing etc.); skip those — the flag we'd
+// recompute is only meaningful for the Brain tab.
 const brainViz = document.querySelector(".brain-viz");
 if (brainViz) {
   new MutationObserver(() => {
-    const activeView = document.querySelector<HTMLElement>(".view.active");
-    if (activeView?.dataset.view) applyChromeFlags(activeView.dataset.view);
+    if (document.querySelector('.view[data-view="brain"].active')) {
+      applyChromeFlags("brain");
+    }
   }).observe(brainViz, { attributes: true, attributeFilter: ["class"] });
 }
