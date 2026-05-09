@@ -24,6 +24,13 @@ import "./gestures/gestures";
 import { ensureModelsLoaded } from "./chat/models";
 import { getVaultPath, indexVault } from "./brain/brain";
 import { refreshBrainViz } from "./brain/viz";
+import { initBrainViz3D } from "./brain/viz3d";
+import { initWorld } from "./world/world";
+import { initAmbient3D } from "./three/ambient";
 
 ensureModelsLoaded();
 if (getVaultPath()) indexVault().then(refreshBrainViz).catch(() => {});
+
+initAmbient3D();
+initBrainViz3D();
+initWorld();

@@ -22,20 +22,24 @@ let vaultIndex: IndexedDoc[] | null = null;
 let indexingInFlight: Promise<void> | null = null;
 let lastIndexedPath = "";
 
-// Hooks the viz module wires up so search hits update the SVG.
-let onIndexReady: (() => void) | null = null;
-let onSearchHits: ((hits: SearchHit[]) => void) | null = null;
-let onClearHighlights: (() => void) | null = null;
+// Hooks the viz modules wire up so search hits update each surface (SVG + 3D).
+const indexReadyHooks: Array<() => void> = [];
+const searchHitsHooks: Array<(hits: SearchHit[]) => void> = [];
+const clearHighlightsHooks: Array<() => void> = [];
 
 export function setVizHooks(hooks: {
   onIndexReady?: () => void;
   onSearchHits?: (hits: SearchHit[]) => void;
   onClearHighlights?: () => void;
 }) {
-  onIndexReady = hooks.onIndexReady ?? null;
-  onSearchHits = hooks.onSearchHits ?? null;
-  onClearHighlights = hooks.onClearHighlights ?? null;
+  if (hooks.onIndexReady) indexReadyHooks.push(hooks.onIndexReady);
+  if (hooks.onSearchHits) searchHitsHooks.push(hooks.onSearchHits);
+  if (hooks.onClearHighlights) clearHighlightsHooks.push(hooks.onClearHighlights);
 }
+
+const onIndexReady = () => indexReadyHooks.forEach(h => h());
+const onSearchHits = (hits: SearchHit[]) => searchHitsHooks.forEach(h => h(hits));
+const onClearHighlights = () => clearHighlightsHooks.forEach(h => h());
 
 export function getVaultPath(): string {
   return vaultPath;

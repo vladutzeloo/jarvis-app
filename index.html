@@ -8,6 +8,13 @@
   </head>
   <body>
     <!-- ============================================================
+         Ambient 3D layer — slow drifting starfield behind the SVG.
+         Drawn first so the circuit-board SVG paints on top. Optional;
+         can be disabled via window.__jarvisAmbient.toggle().
+         ============================================================ -->
+    <canvas id="ambient-canvas" class="ambient-canvas" aria-hidden="true"></canvas>
+
+    <!-- ============================================================
          Background — animated circuit board, sits behind everything
          ============================================================ -->
     <div class="bg-circuit" aria-hidden="true">
@@ -214,6 +221,7 @@
         <button class="tab" data-tab="agents">Agents</button>
         <button class="tab" data-tab="vinted">Vinted</button>
         <button class="tab" data-tab="brain">Brain</button>
+        <button class="tab" data-tab="world">World</button>
       </nav>
       <div id="stats" class="stats"></div>
     </header>
@@ -473,6 +481,7 @@
       <div class="brain-pane">
         <div class="brain-header">
           <input id="brain-search" placeholder="Search your knowledge base…" />
+          <button id="brain-viz-mode" class="ghost" title="Switch to 3D viz">3D</button>
           <button id="brain-settings" class="ghost" title="Configure vault">⚙</button>
         </div>
 
@@ -503,6 +512,7 @@
             <!-- firing pulses (small fading dots) drawn dynamically by JS -->
             <g class="brain-pulses"></g>
           </svg>
+          <canvas id="brain-viz-3d" class="brain-viz-3d" aria-hidden="true"></canvas>
           <div class="brain-stats">
             <div class="brain-stat"><span class="brain-stat-value" id="brain-stat-notes">0</span><span class="brain-stat-label">Notes</span></div>
             <div class="brain-stat"><span class="brain-stat-value" id="brain-stat-words">0</span><span class="brain-stat-label">Words</span></div>
@@ -512,6 +522,26 @@
 
         <div id="brain-status" class="brain-status">No vault configured yet.</div>
         <div id="brain-results" class="brain-results"></div>
+      </div>
+    </section>
+
+    <!-- World tab — 3D playground -->
+    <section class="view" data-view="world">
+      <div class="world-pane">
+        <canvas id="world-canvas" class="world-canvas"></canvas>
+        <div class="world-hud">
+          <div class="world-hud-cell">
+            <span class="world-hud-label">Hits</span>
+            <span class="world-hud-value" id="world-score">0</span>
+          </div>
+          <div class="world-hud-cell">
+            <span class="world-hud-label">Target</span>
+            <span class="world-hud-value">CORE-01</span>
+          </div>
+        </div>
+        <div class="world-hint" id="world-hint">
+          Drag to orbit · scroll to zoom · click to fire
+        </div>
       </div>
     </section>
 
