@@ -82,6 +82,98 @@
 
 .world-hint.dimmed { opacity: 0.25; }
 
+/* Audio controls HUD — top-right corner, pointer-events on so sliders work. */
+
+.world-audio-hud {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(13, 17, 23, 0.60);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-family: var(--font-mono);
+  z-index: 2;
+  min-width: 168px;
+}
+
+.wah-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--fg-dim);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.wah-mute {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+.wah-mute:hover { opacity: 1; }
+
+.wah-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wah-label {
+  font-size: 9px;
+  color: var(--fg-dim);
+  letter-spacing: 0.12em;
+  width: 22px;
+  flex-shrink: 0;
+}
+
+.wah-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  outline: none;
+  cursor: pointer;
+}
+.wah-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow);
+  cursor: pointer;
+}
+.wah-slider::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.wah-val {
+  font-size: 9px;
+  color: var(--accent);
+  width: 24px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 /* NPC launchers — floating HTML labels projected from 3D world positions
    each frame by world/npcs.ts. The layer sits above the canvas and below
    the HUD; pointer-events are disabled so canvas drags / clicks pass through. */

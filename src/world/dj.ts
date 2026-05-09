@@ -77,12 +77,23 @@ interface Player {
 
 let player: Player | null = null;
 
+const STORAGE_MUSIC_VOL = "jarvis.music.volume";
+let musicVolume = parseFloat(localStorage.getItem(STORAGE_MUSIC_VOL) ?? "0.7");
+
+export function setMusicVolume(v: number): void {
+  musicVolume = Math.max(0, Math.min(1, v));
+  localStorage.setItem(STORAGE_MUSIC_VOL, String(musicVolume));
+  if (player) player.audio.volume = musicVolume;
+}
+
+export function getMusicVolume(): number { return musicVolume; }
+
 function ensurePlayer(): Player {
   if (player) return player;
   const audio = new Audio();
   audio.crossOrigin = "anonymous";
   audio.preload = "none";
-  audio.volume = 0.7;
+  audio.volume = musicVolume;
 
   const ctx = getAudioContext();
   const source = ctx.createMediaElementSource(audio);

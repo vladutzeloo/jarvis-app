@@ -9,12 +9,15 @@
 let ctx: AudioContext | null = null;
 let masterGain: GainNode | null = null;
 let muted = false;
+let volume = 0.5;
+
+const STORAGE_VOL   = "jarvis.sfx.volume";
 
 function ac(): AudioContext {
   if (!ctx) {
     ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     masterGain = ctx.createGain();
-    masterGain.gain.value = muted ? 0 : 0.5;
+    masterGain.gain.value = muted ? 0 : volume;
     masterGain.connect(ctx.destination);
   }
   return ctx;
@@ -104,14 +107,23 @@ export const sfx = {
 
 const STORAGE_MUTED = "jarvis.sfx.muted";
 muted = localStorage.getItem(STORAGE_MUTED) === "1";
+volume = parseFloat(localStorage.getItem(STORAGE_VOL) ?? "0.5");
 
 export function setMuted(m: boolean): void {
   muted = m;
   localStorage.setItem(STORAGE_MUTED, m ? "1" : "0");
-  if (masterGain) masterGain.gain.value = m ? 0 : 0.5;
+  if (masterGain) masterGain.gain.value = m ? 0 : volume;
 }
 
 export function isMuted(): boolean { return muted; }
+
+export function setVolume(v: number): void {
+  volume = Math.max(0, Math.min(1, v));
+  localStorage.setItem(STORAGE_VOL, String(volume));
+  if (masterGain && !muted) masterGain.gain.value = volume;
+}
+
+export function getVolume(): number { return volume; }
 
 // Resume on first gesture — required by browser autoplay policies.
 const resumeOnce = () => {
