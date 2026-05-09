@@ -51,7 +51,10 @@ function renderMarkdown(text: string): string {
   return wrapper.innerHTML;
 }
 
-const OLLAMA_BASE = "http://localhost:11434";
+// Use 127.0.0.1 (not "localhost") to force IPv4. On Windows 11 "localhost"
+// resolves IPv6-first (::1), but Ollama in WSL only binds IPv4 — that mismatch
+// shows up as net::ERR_CONNECTION_REFUSED in the webview even when curl works.
+const OLLAMA_BASE = "http://127.0.0.1:11434";
 
 // Backends — Ollama is the local default; NVIDIA is the hosted integration
 // from .env. The model picker tags each <option> with `data-backend` so the
@@ -341,7 +344,7 @@ stopSpeakingBtn.addEventListener("click", () => {
   stopSpeakingBtn.classList.add("hidden");
 });
 
-const PIPER_BASE = "http://localhost:5500";
+const PIPER_BASE = "http://127.0.0.1:5500";
 const STORAGE_TTS_STYLE = "jarvis.tts.style";
 let piperAvailable: boolean | null = null;
 let currentAudio: HTMLAudioElement | null = null;
