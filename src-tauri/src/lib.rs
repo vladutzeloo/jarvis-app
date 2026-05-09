@@ -220,6 +220,99 @@ fn write_memory_entry(filename: String, content: String) -> Result<String, Strin
     Ok(full.display().to_string())
 }
 
+// ─── web search (Tavily) ──────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize)]
+struct WebHit {
+    title: String,
+    url: String,
+    snippet: String,
+    score: Option<f64>,
+}
+
+#[derive(Debug, Serialize)]
+struct WebSearchResult {
+    query: String,
+    answer: Option<String>,
+    hits: Vec<WebHit>,
+}
+
+/// Hit Tavily's /search endpoint. Returns Err with a UI-readable string when
+/// the key is missing, the network call fails, or Tavily returns non-2xx —
+/// the frontend treats every failure as "no web results, fall back to vault."
+#[tauri::command]
+async fn web_search(query: String, max_results: Option<u32>) -> Result<WebSearchResult, String> {
+    let api_key = get_env("TAVILY_API_KEY")
+        .filter(|v| !v.trim().is_empty())
+        .ok_or_else(|| "TAVILY_API_KEY not set in .env".to_string())?;
+
+    let q = query.trim();
+    if q.is_empty() {
+        return Err("query is empty".to_string());
+    }
+    let n = max_results.unwrap_or(5).clamp(1, 10);
+
+    let body = serde_json::json!({
+        "api_key": api_key,
+        "query": q,
+        "search_depth": "basic",
+        "include_answer": true,
+        "max_results": n,
+    });
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|e| format!("client build error: {e}"))?;
+
+    let resp = client
+        .post("https://api.tavily.com/search")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("network error: {e}"))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        return Err(format!("Tavily HTTP {status}: {text}"));
+    }
+
+    let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    let answer = json
+        .get("answer")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(String::from);
+
+    let mut hits = Vec::new();
+    if let Some(arr) = json.get("results").and_then(|v| v.as_array()) {
+        for r in arr {
+            let title = r
+                .get("title")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let url = r
+                .get("url")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let snippet = r
+                .get("content")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let score = r.get("score").and_then(|v| v.as_f64());
+            if !url.is_empty() {
+                hits.push(WebHit { title, url, snippet, score });
+            }
+        }
+    }
+
+    Ok(WebSearchResult { query: q.to_string(), answer, hits })
+}
+
 // ─── public commands: NVIDIA ─────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
@@ -677,6 +770,7 @@ pub fn run() {
             ruflo_jobs,
             ruflo_cancel,
             ruflo_run,
+            web_search,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

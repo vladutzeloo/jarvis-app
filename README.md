@@ -71,6 +71,18 @@ scripts/                  # one-off setup + launcher helpers
 └── launch.vbs            # production .exe launcher (waits for Ollama)
 ```
 
+## Web search (Tavily)
+
+The 🌐 toggle in the chat toolbar augments **Research mode** with fresh web
+hits from [Tavily](https://tavily.com). The HTTP call lives in Rust
+(`web_search` Tauri command), so the API key never enters the webview. Set
+`TAVILY_API_KEY` in `.env` to enable; leave it blank and Research mode falls
+back silently to vault-only.
+
+Hits land in the same Research card under a "🌐 Web sources" section with
+clickable URLs, and the augmented prompt asks the main model to cite them
+inline as `[1]`, `[2]`, … matching the numbered list.
+
 ## Backends in detail
 
 - The NVIDIA call goes Webview → Rust `nvidia_chat_stream` command → NVIDIA

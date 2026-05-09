@@ -1,20 +1,29 @@
-// Research mode: a fast model picks search terms, hits the vault, and writes
-// an outline that gets folded into the prompt sent to the (slower) main
-// model. Toggle is wired here; `runResearch` is called from the chat send
-// loop when the toggle is on.
+// Research mode: a fast model picks search terms, hits the vault AND (if
+// TAVILY_API_KEY is configured) the web in parallel, then writes an outline
+// that gets folded into the prompt sent to the (slower) main model. Toggles
+// are wired here; `runResearch` is called from the chat send loop when
+// research mode is on.
 
-import type { IndexedDoc, ResearchResult } from "../types";
+import type { IndexedDoc, ResearchResult, WebHit } from "../types";
 import { OLLAMA_BASE } from "../types";
 import { searchVault, getVaultPath, getVaultIndex, indexVault } from "../brain/brain";
 import { getModelPicker } from "./models";
+import { invoke } from "@tauri-apps/api/core";
 
 const STORAGE_RESEARCH = "jarvis.research.mode";
+const STORAGE_WEBSEARCH = "jarvis.websearch.mode";
 const researchToggle = document.getElementById("research-toggle") as HTMLButtonElement;
+const websearchToggle = document.getElementById("websearch-toggle") as HTMLButtonElement | null;
 
 let researchMode = localStorage.getItem(STORAGE_RESEARCH) === "true";
+let websearchMode = localStorage.getItem(STORAGE_WEBSEARCH) === "true";
 
 export function getResearchMode(): boolean {
   return researchMode;
+}
+
+export function getWebsearchMode(): boolean {
+  return websearchMode;
 }
 
 function refreshResearchUI() {
@@ -32,6 +41,24 @@ researchToggle?.addEventListener("click", () => {
   researchMode = !researchMode;
   localStorage.setItem(STORAGE_RESEARCH, String(researchMode));
   refreshResearchUI();
+});
+
+function refreshWebsearchUI() {
+  if (!websearchToggle) return;
+  if (websearchMode) {
+    websearchToggle.classList.add("websearch-on");
+    websearchToggle.title = "Web search ON — Research mode also pulls fresh web hits (Tavily)";
+  } else {
+    websearchToggle.classList.remove("websearch-on");
+    websearchToggle.title = "Web search OFF — Research mode uses vault only";
+  }
+}
+refreshWebsearchUI();
+
+websearchToggle?.addEventListener("click", () => {
+  websearchMode = !websearchMode;
+  localStorage.setItem(STORAGE_WEBSEARCH, String(websearchMode));
+  refreshWebsearchUI();
 });
 
 async function pickResearchModel(): Promise<string> {
@@ -106,18 +133,43 @@ Search terms:`;
     excerpt: d.content.slice(0, 1500),
   }));
 
-  status(`Found ${notes.length} note(s). Outlining the answer…`);
+  let webHits: WebHit[] = [];
+  let webAnswer: string | null = null;
+  if (websearchMode) {
+    status("Searching the web…");
+    // One web call against the user's original question; Tavily ranks better
+    // on natural language than on the chopped-up term list. Failures are
+    // swallowed so a missing key / network blip never breaks Research mode.
+    try {
+      const res = await invoke<{ answer: string | null; hits: WebHit[] }>("web_search", {
+        query,
+        maxResults: 5,
+      });
+      webHits = res.hits || [];
+      webAnswer = res.answer ?? null;
+    } catch (e: any) {
+      const msg = String(e?.message ?? e);
+      status(msg.includes("TAVILY_API_KEY")
+        ? "Web search skipped — TAVILY_API_KEY not set."
+        : `Web search failed: ${msg}`);
+    }
+  }
+
+  status(`Found ${notes.length} note(s)${websearchMode ? `, ${webHits.length} web hit(s)` : ""}. Outlining the answer…`);
 
   const notesText = notes.length
     ? notes.map(n => `--- ${n.rel} ---\n${n.excerpt}`).join("\n\n")
     : "(no relevant notes found in vault)";
+  const webText = webHits.length
+    ? webHits.map(h => `--- ${h.title} (${h.url}) ---\n${h.snippet}`).join("\n\n")
+    : "(no web results)";
 
   const outlinePrompt = `You are a research assistant. The user asked: "${query}"
 
 Here are excerpts from their personal knowledge base that may be relevant:
 ${notesText}
 
-Based on the question and these notes, write a SHORT outline (3-5 bullet points) of what a good answer should cover. Be concise. Return only the bullets, no preamble.`;
+${websearchMode ? `Here are fresh excerpts from the web:\n${webText}\n\n` : ""}Based on the question and these sources, write a SHORT outline (3-5 bullet points) of what a good answer should cover. Be concise. Return only the bullets, no preamble.`;
 
   let outline = "";
   try {
@@ -126,13 +178,24 @@ Based on the question and these notes, write a SHORT outline (3-5 bullet points)
     status(`Outline failed: ${e.message}`);
   }
 
-  return { searchTerms: terms, notes, outline, fastModel };
+  return { searchTerms: terms, notes, webHits, webAnswer, outline, fastModel };
 }
 
 export function buildAugmentedPrompt(query: string, r: ResearchResult): string {
   const notesBlock = r.notes.length
     ? `\n\nResearch notes from the user's knowledge base:\n${r.notes.map(n => `--- ${n.rel} ---\n${n.excerpt}`).join("\n\n")}`
     : "";
+  const webBlock = r.webHits.length
+    ? `\n\nWeb sources (cite as [n] using these numbers):\n${r.webHits
+        .map((h, i) => `[${i + 1}] ${h.title} — ${h.url}\n${h.snippet}`)
+        .join("\n\n")}`
+    : "";
+  const answerBlock = r.webAnswer
+    ? `\n\nTavily quick answer (treat as a hint, not ground truth):\n${r.webAnswer}`
+    : "";
   const outlineBlock = r.outline ? `\n\nOutline (from research assistant):\n${r.outline}` : "";
-  return `${query}${notesBlock}${outlineBlock}\n\nProvide a thorough, well-structured answer using the outline and notes above where relevant.`;
+  const citeHint = r.webHits.length
+    ? " Cite web sources inline using [n] markers matching the numbered list above."
+    : "";
+  return `${query}${notesBlock}${webBlock}${answerBlock}${outlineBlock}\n\nProvide a thorough, well-structured answer using the outline, notes, and sources above where relevant.${citeHint}`;
 }
