@@ -17,6 +17,8 @@ import {
   type NvidiaModel,
 } from "./backends/nvidia";
 
+import { loadSystemPrompt, writeMemoryEntry } from "./vault";
+
 import { EditorState, Compartment } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
 import { defaultKeymap, indentWithTab, history as historyExt, historyKeymap } from "@codemirror/commands";
@@ -96,6 +98,7 @@ const chat = document.getElementById("chat") as HTMLElement;
 const input = document.getElementById("input") as HTMLTextAreaElement;
 const sendBtn = document.getElementById("send") as HTMLButtonElement;
 const clearBtn = document.getElementById("clear") as HTMLButtonElement;
+const rememberBtn = document.getElementById("remember") as HTMLButtonElement | null;
 const modelPicker = document.getElementById("model-picker") as HTMLSelectElement;
 const stats = document.getElementById("stats") as HTMLElement;
 const micBtn = document.getElementById("mic") as HTMLButtonElement;
@@ -695,6 +698,10 @@ async function send() {
   input.value = "";
   input.style.height = "auto";
 
+  // Make sure the vault-derived identity prompt is in place before we build
+  // the messages array. After the first send, this resolves immediately.
+  await vaultSystemPromptReady;
+
   // Stop any current speech before generating a new turn.
   synth.cancel();
 
@@ -895,6 +902,25 @@ clearBtn.addEventListener("click", () => {
   stats.textContent = "";
   synth.cancel();
   input.focus();
+});
+
+// Remember button: snapshot the non-system turns of the current chat to
+// `06_Memory/` in the vault as a dated markdown note with YAML frontmatter.
+rememberBtn?.addEventListener("click", async () => {
+  if (history.length === 0) {
+    addSystem("Nothing to remember — chat is empty.");
+    return;
+  }
+  const turns = history
+    .map((m) => `**${m.role}:** ${m.content}`)
+    .join("\n\n");
+  const frontmatter = `---\ntitle: Session note\ndate: ${new Date().toISOString()}\ntags: [session, auto]\n---\n\n`;
+  const saved = await writeMemoryEntry("session", frontmatter + turns);
+  if (saved) {
+    addSystem(`Saved to vault: ${saved}`);
+  } else {
+    addSystem("Could not save — is JARVIS_VAULT_PATH set?");
+  }
 });
 
 // ---------------- Research mode (fast model researches, heavy model answers) ----------------
@@ -1920,8 +1946,22 @@ function buildOllamaOptions(): Record<string, number> {
   return opts;
 }
 
+// Vault-derived identity prompt, loaded once per session. The promise is
+// kicked off at startup so the first chat send doesn't pay the disk read.
+let vaultSystemPrompt: string | null = null;
+const vaultSystemPromptReady: Promise<void> = loadSystemPrompt()
+  .then((p) => {
+    vaultSystemPrompt = p;
+  })
+  .catch(() => {
+    vaultSystemPrompt = null;
+  });
+
 function buildMessages(history: Message[]): { role: string; content: string }[] {
   const msgs: { role: string; content: string }[] = [];
+  if (vaultSystemPrompt && vaultSystemPrompt.trim()) {
+    msgs.push({ role: "system", content: vaultSystemPrompt });
+  }
   if (settings.systemPrompt && settings.systemPrompt.trim()) {
     msgs.push({ role: "system", content: settings.systemPrompt });
   }

@@ -167,6 +167,59 @@ fn write_env_value(key: String, value: String) -> Result<String, String> {
     Ok(path.display().to_string())
 }
 
+// ─── vault I/O ────────────────────────────────────────────────────────────────────────
+
+/// Returns the vault root path if JARVIS_VAULT_PATH is set and the directory exists.
+fn vault_root() -> Option<PathBuf> {
+    let raw = get_env("JARVIS_VAULT_PATH").filter(|v| !v.trim().is_empty())?;
+    let path = PathBuf::from(raw.trim());
+    if path.is_dir() {
+        Some(path)
+    } else {
+        None
+    }
+}
+
+#[tauri::command]
+fn get_vault_status() -> serde_json::Value {
+    match vault_root() {
+        Some(p) => serde_json::json!({ "configured": true, "path": p.display().to_string() }),
+        None => serde_json::json!({ "configured": false, "path": null }),
+    }
+}
+
+/// Read a markdown file relative to the vault root.
+/// `rel_path` example: "01_Identity/about.md"
+#[tauri::command]
+fn read_vault_file(rel_path: String) -> Result<String, String> {
+    let root = vault_root()
+        .ok_or_else(|| "Vault not configured. Set JARVIS_VAULT_PATH in .env.".to_string())?;
+    // Prevent path traversal: reject any component that is "..".
+    let rel = std::path::Path::new(&rel_path);
+    if rel.components().any(|c| c == std::path::Component::ParentDir) {
+        return Err("path traversal not allowed".to_string());
+    }
+    let full = root.join(rel);
+    std::fs::read_to_string(&full).map_err(|e| format!("cannot read {}: {}", full.display(), e))
+}
+
+/// Write a timestamped note to `06_Memory/` in the vault.
+/// `filename` should be something like `2026-05-09_session.md`.
+/// `content` is the full markdown body to write.
+#[tauri::command]
+fn write_memory_entry(filename: String, content: String) -> Result<String, String> {
+    let root = vault_root().ok_or_else(|| "Vault not configured.".to_string())?;
+    // Safety: only allow simple filenames, no slashes.
+    if filename.contains('/') || filename.contains('\\') || filename.contains("..") {
+        return Err("filename must not contain path separators".to_string());
+    }
+    let dir = root.join("06_Memory");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let full = dir.join(&filename);
+    std::fs::write(&full, content).map_err(|e| e.to_string())?;
+    Ok(full.display().to_string())
+}
+
 // ─── public commands: NVIDIA ─────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
@@ -421,6 +474,9 @@ pub fn run() {
             greet,
             read_env_snapshot,
             write_env_value,
+            get_vault_status,
+            read_vault_file,
+            write_memory_entry,
             nvidia_list_models,
             nvidia_chat_stream,
         ])
