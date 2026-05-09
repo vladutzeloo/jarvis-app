@@ -41,8 +41,12 @@ export function createBloomComposer(
   camera: THREE.Camera,
   opts: BloomOpts = {},
 ): BloomComposer {
+  // EffectComposer renders into its own offscreen targets, which bypasses
+  // the WebGLRenderer's `antialias: true`. Re-introduce MSAA on WebGL2 so
+  // the base scene matches the visual quality the renderer was set up for.
   const composer = new EffectComposer(renderer, {
     frameBufferType: THREE.HalfFloatType,
+    multisampling: renderer.capabilities.isWebGL2 ? 4 : 0,
   });
   composer.addPass(new RenderPass(scene, camera));
 
@@ -61,10 +65,11 @@ export function createBloomComposer(
     setSize(w, h) {
       // EffectComposer guards against zero, but we belt-and-brace it here so
       // a hidden tab doesn't end up with a 0×0 framebuffer that throws on
-      // resume.
+      // resume. The third arg disables canvas style updates so CSS keeps
+      // owning the display size — matches fitRenderer's setSize(..., false).
       const cw = Math.max(1, w | 0);
       const ch = Math.max(1, h | 0);
-      composer.setSize(cw, ch);
+      composer.setSize(cw, ch, false);
     },
     dispose() {
       // EffectComposer.dispose disposes the passes (incl. their effects and

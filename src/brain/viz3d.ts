@@ -183,9 +183,14 @@ export function initBrainViz3D(): void {
     headerObserver.observe(headerEl, { attributes: true, attributeFilter: ["class"] });
   }
 
+  // Mirror the renderer's effective size into the composer so the two stay
+  // in sync even when fitRenderer takes its window-fallback path (hidden
+  // tab, layout still resolving).
+  const sizeTmp = new THREE.Vector2();
   const fit = () => {
     fitRenderer(renderer, camera, container);
-    post.setSize(container.clientWidth, container.clientHeight);
+    renderer.getSize(sizeTmp);
+    post.setSize(sizeTmp.x, sizeTmp.y);
   };
   const loop = createLoop((dt, t) => {
     halo.scale.setScalar(1 + Math.sin(t * 1.6) * 0.06);

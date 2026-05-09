@@ -158,9 +158,15 @@ export function initWorld(): void {
     if (scoreEl) scoreEl.textContent = String(n);
   }
 
+  // Read the size back from the renderer instead of view.clientWidth/Height
+  // directly: fitRenderer falls back to window.innerWidth when the view has
+  // no layout box (e.g. inactive tab, initial paint), so the composer must
+  // mirror that fallback to avoid a renderer-vs-composer size mismatch.
+  const sizeTmp = new THREE.Vector2();
   const fit = () => {
     fitRenderer(renderer, camera, view);
-    post.setSize(view.clientWidth, view.clientHeight);
+    renderer.getSize(sizeTmp);
+    post.setSize(sizeTmp.x, sizeTmp.y);
   };
   fit();
   const stopResize = observeResize(view, fit);
