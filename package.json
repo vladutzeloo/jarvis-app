@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "dev:minimap": "npm --prefix apps/minimap run dev",
+    "build:minimap": "npm --prefix apps/minimap run build",
+    "preview:minimap": "npm --prefix apps/minimap run preview"
   },
   "dependencies": {
     "@codemirror/lang-css": "^6.3.1",

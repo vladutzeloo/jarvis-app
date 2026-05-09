@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JARVIS // Minimap</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-glyph">◉</span>
+        <span class="brand-name">JARVIS</span>
+        <span class="brand-sub">// MINIMAP</span>
+      </div>
+      <div class="topbar-right">
+        <span id="server-pill" class="pill pill-unknown">server</span>
+        <span id="ollama-pill" class="pill pill-unknown">ollama</span>
+        <button id="settings-toggle" class="icon-btn" aria-label="Settings">⚙</button>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="card" id="card-system">
+        <h2>System</h2>
+        <div id="system-body" class="card-body">
+          <div class="muted">Waiting for /system-stats…</div>
+        </div>
+      </section>
+
+      <section class="card" id="card-jobs">
+        <h2>Jobs &amp; Bots</h2>
+        <div id="jobs-body" class="card-body">
+          <div class="muted">Waiting for /ruflo/jobs and /vinted/bots…</div>
+        </div>
+      </section>
+
+      <section class="card card-wide" id="card-log">
+        <h2>Live feed</h2>
+        <div id="log-body" class="card-body log-body">
+          <div class="muted">No active streams. Start a ruflo job to see output here.</div>
+        </div>
+      </section>
+
+      <section class="card card-chat" id="card-chat">
+        <h2>Helper bot</h2>
+        <div id="chat-body" class="card-body chat-body"></div>
+        <form id="chat-form" class="chat-form" autocomplete="off">
+          <input
+            id="chat-input"
+            type="text"
+            placeholder="Ask jarvis…"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="chat-send" type="submit">Send</button>
+        </form>
+      </section>
+    </main>
+
+    <aside id="settings-drawer" class="drawer hidden">
+      <div class="drawer-head">
+        <h2>Settings</h2>
+        <button id="settings-close" class="icon-btn" aria-label="Close">✕</button>
+      </div>
+      <div class="drawer-body">
+        <label>
+          <span>Server URL</span>
+          <input id="setting-server" type="text" />
+        </label>
+        <label>
+          <span>Ollama model</span>
+          <input id="setting-model" type="text" />
+        </label>
+        <label>
+          <span>Poll interval (ms)</span>
+          <input id="setting-poll" type="number" min="500" step="500" />
+        </label>
+        <label class="row">
+          <input id="setting-followlogs" type="checkbox" />
+          <span>Auto-attach to new ruflo jobs</span>
+        </label>
+        <button id="setting-save" class="primary-btn">Save</button>
+        <p id="setting-status" class="muted"></p>
+      </div>
+    </aside>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

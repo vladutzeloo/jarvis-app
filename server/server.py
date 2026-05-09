@@ -21,6 +21,9 @@ Endpoints:
   POST /vinted/scan-all      -> [{...}, ...]
   POST /vinted/negotiate/<bot_id>/<listing_id>
                              -> {"target_offer": ..., "drafts": [...], ...}
+  GET  /chat/health          -> {"ok": true, "models": [...]} (probes local Ollama)
+  POST /chat                 {"model": "...", "messages": [...]} -> streams ndjson
+                             tokens: {"token":"..."}\n ... {"done":true}\n
 
 Voice path is taken from $JARVIS_VOICE_PATH (default
 ~/jarvis-tts/voices/en_GB-alan-medium.onnx). Listens on 0.0.0.0:5500.
@@ -61,6 +64,9 @@ else:
 DEFAULT_VOICE = str(Path.home() / "jarvis-tts" / "voices" / "en_GB-alan-medium.onnx")
 VOICE_PATH = os.environ.get("JARVIS_VOICE_PATH", DEFAULT_VOICE)
 PORT = int(os.environ.get("JARVIS_PORT", "5500"))
+
+# Local Ollama for the minimap helper bot. Override with $JARVIS_OLLAMA_URL.
+OLLAMA_URL = os.environ.get("JARVIS_OLLAMA_URL", "http://localhost:11434")
 
 # Cap inbound /tts payloads. The webview only ever sends short prompts; anything
 # larger is almost certainly a bug or abuse and would otherwise be read into
@@ -113,6 +119,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json(503, {"error": _VINTED_IMPORT_ERROR})
             else:
                 self._send_json(200, vinted_runner.list_bots())
+        elif self.path == "/chat/health":
+            self._handle_chat_health()
         else:
             self.send_response(404)
             self.end_headers()
@@ -142,6 +150,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.path.startswith("/vinted/negotiate/"):
             self._handle_vinted_negotiate(self.path[len("/vinted/negotiate/"):])
+            return
+        if self.path == "/chat":
+            self._handle_chat()
             return
         if self.path != "/tts":
             self.send_response(404)
@@ -379,6 +390,101 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json(404, {"error": str(e)})
             return
         self._send_json(200, result)
+
+    # ─── chat (ollama proxy) handlers ──────────────────────────────────
+
+    def _handle_chat_health(self):
+        """Return reachability + tag list for the local Ollama server."""
+        import urllib.request
+        import urllib.error
+
+        try:
+            with urllib.request.urlopen(f"{OLLAMA_URL}/api/tags", timeout=2) as r:
+                data = json.loads(r.read().decode())
+        except (urllib.error.URLError, OSError, ValueError) as e:
+            self._send_json(200, {"ok": False, "error": str(e)})
+            return
+        models = [m.get("name") for m in data.get("models", []) if m.get("name")]
+        self._send_json(200, {"ok": True, "models": models})
+
+    def _handle_chat(self):
+        """Stream a chat response from local Ollama as line-delimited JSON.
+
+        Request: {"model": "...", "messages": [{"role": "user|assistant", "content": "..."}]}
+        Response: each line is a JSON object: {"token": "..."} or {"done": true} or {"error": "..."}.
+        """
+        import urllib.request
+        import urllib.error
+
+        body = self._read_json_body()
+        if body is None:
+            return
+        model = (body.get("model") or "").strip()
+        messages = body.get("messages") or []
+        if not model or not isinstance(messages, list) or not messages:
+            self._send_json(400, {"error": "expected {model, messages: [...]}"})
+            return
+
+        payload = json.dumps({
+            "model": model,
+            "messages": messages,
+            "stream": True,
+        }).encode()
+        req = urllib.request.Request(
+            f"{OLLAMA_URL}/api/chat",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+
+        try:
+            upstream = urllib.request.urlopen(req, timeout=300)
+        except urllib.error.HTTPError as e:
+            self._send_json(502, {"error": f"ollama HTTP {e.code}: {e.reason}"})
+            return
+        except (urllib.error.URLError, OSError) as e:
+            self._send_json(502, {"error": f"ollama unreachable: {e}"})
+            return
+
+        # Switch to streaming response — line-delimited JSON.
+        self.send_response(200)
+        self._cors()
+        self.send_header("Content-Type", "application/x-ndjson")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("X-Accel-Buffering", "no")
+        self.end_headers()
+
+        try:
+            for raw in upstream:
+                if not raw:
+                    continue
+                try:
+                    chunk = json.loads(raw.decode())
+                except ValueError:
+                    continue
+                msg = chunk.get("message") or {}
+                token = msg.get("content")
+                if token:
+                    try:
+                        self.wfile.write(
+                            (json.dumps({"token": token}) + "\n").encode()
+                        )
+                        self.wfile.flush()
+                    except (BrokenPipeError, ConnectionResetError):
+                        # Client went away; stop pulling from ollama.
+                        break
+                if chunk.get("done"):
+                    try:
+                        self.wfile.write((json.dumps({"done": True}) + "\n").encode())
+                        self.wfile.flush()
+                    except (BrokenPipeError, ConnectionResetError):
+                        pass
+                    break
+        finally:
+            try:
+                upstream.close()
+            except Exception:
+                pass
 
     def _send_text(self, status, body):
         encoded = body.encode() if isinstance(body, str) else body

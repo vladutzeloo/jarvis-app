@@ -62,6 +62,11 @@ server/                   # Python source-of-truth for the WSL TTS server
 ├── system_stats.py       # CPU/RAM/GPU stats from psutil + nvidia-smi
 └── ruflo_runner.py       # subprocess manager for `npx ruflo@latest` jobs
 
+apps/minimap/             # standalone Vite web app (browser, not Tauri) —
+                          # live "minimap" of jarvis: system stats, ruflo +
+                          # vinted bots, log feed, helper bot. Talks to the
+                          # WSL server on :5500. Run with `npm run dev:minimap`.
+
 scripts/                  # one-off setup + launcher helpers
 ├── ollama-fix.sh         # systemd override: dual-stack listen + open CORS
 ├── ollama-fix.cmd        # Windows wrapper: runs ollama-fix.sh in WSL
@@ -133,6 +138,24 @@ WSL (nvm is the easiest path) and re-run `bash scripts/jarvis-server.sh --ruflo`
 so the systemd unit picks up the new bin directory.
 
 Override the install dir with `JARVIS_HOME=/somewhere/else bash scripts/...`.
+
+## Minimap web app
+
+A second, browser-served view of what jarvis is doing right now. Lives at
+`apps/minimap/` as its own Vite app (port `5601`) so it can be opened from
+any device on the LAN — no Tauri shell required.
+
+```bash
+npm install --prefix apps/minimap
+npm run dev:minimap        # http://localhost:5601
+```
+
+It hits the same WSL server on `:5500` for `/system-stats`, `/ruflo/jobs`,
+`/vinted/bots`, and the SSE feed at `/ruflo/stream/<id>`. The helper-bot
+panel POSTs to `/chat`, which proxies to local Ollama (`$JARVIS_OLLAMA_URL`,
+default `http://localhost:11434`) and streams ndjson tokens back. Configure
+the server URL, Ollama model, and poll interval from the ⚙ drawer; settings
+persist in `localStorage`.
 
 ## Troubleshooting
 
