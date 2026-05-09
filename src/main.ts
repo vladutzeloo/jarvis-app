@@ -6,6 +6,10 @@
 // DOM queries and state.
 
 import "./tabs";
+import "./gamify/xp";
+// triggers must register *before* chat.ts so our send-click listener fires
+// before chat's clears the input value (event listeners run in attach order).
+import "./gamify/triggers";
 import "./cockpit/cockpit";
 import "./brain/brain";
 import "./brain/viz";
@@ -20,6 +24,7 @@ import "./workspace/workspace";
 import "./agents/agents";
 import "./vinted/vinted";
 import "./gestures/gestures";
+import "./gamify/hub";
 
 import { ensureModelsLoaded } from "./chat/models";
 import { getVaultPath, indexVault } from "./brain/brain";

@@ -1,6 +1,7 @@
 /* JARVIS — design tokens, resets, and the highlight.js theme. */
 
 @import url('https://cdn.jsdelivr.net/npm/highlight.js@11.10.0/styles/atom-one-dark.css');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
 
 :root {
   color-scheme: dark;
@@ -22,6 +23,13 @@
   --accent-glow: rgba(92, 217, 255, 0.28);
   --accent-soft: rgba(92, 217, 255, 0.12);
 
+  /* Cyberpunk arcade accents (magenta + violet pair the cyan) */
+  --neon-magenta: #ff2bd6;
+  --neon-magenta-glow: rgba(255, 43, 214, 0.45);
+  --neon-violet: #b46bff;
+  --neon-amber: #ffb240;
+  --neon-lime: #aaff66;
+
   /* Status */
   --success: #3fb950;
   --warning: #d29922;
@@ -36,6 +44,8 @@
   /* Type */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Cascadia Mono', 'Fira Code', 'Consolas', monospace;
+  --font-pixel: 'Press Start 2P', 'JetBrains Mono', monospace;
+  --font-pixel-tall: 'VT323', 'JetBrains Mono', monospace;
 
   font-family: var(--font-sans);
   font-size: 14px;
