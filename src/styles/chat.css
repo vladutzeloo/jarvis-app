@@ -53,6 +53,13 @@
   box-shadow: 0 0 10px var(--accent-glow);
 }
 
+#websearch-toggle.websearch-on {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft) !important;
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
 #stop-speaking {
   background: var(--error) !important;
   color: white !important;
@@ -182,6 +189,30 @@
   font-style: italic;
   color: var(--fg-dim);
   padding: 4px 0;
+}
+
+.research-note.web-hit .research-note-title {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.research-note.web-hit a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+.research-note.web-hit a:hover { text-decoration: underline; }
+.web-hit-index {
+  color: var(--fg-dim);
+  font-family: var(--font-mono);
+}
+.web-hit-host {
+  color: var(--fg-dim);
+  font-size: 10.5px;
+  font-family: var(--font-mono);
 }
 
 .research-outline {

@@ -101,15 +101,34 @@ export async function send() {
             .map(n => `<div class="research-note"><div class="research-note-title">${escapeHtml(n.rel)}</div><div class="research-note-excerpt">${escapeHtml(n.excerpt.slice(0, 400))}${n.excerpt.length > 400 ? "…" : ""}</div></div>`)
             .join("")
         : `<div class="research-empty">No relevant notes found in your vault.</div>`;
+      const webHTML = researchResult.webHits.length
+        ? researchResult.webHits
+            .map((h, i) => {
+              const host = (() => { try { return new URL(h.url).host; } catch { return h.url; } })();
+              return `<div class="research-note web-hit">
+                <div class="research-note-title">
+                  <span class="web-hit-index">[${i + 1}]</span>
+                  <a href="${escapeHtml(h.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(h.title || host)}</a>
+                  <span class="web-hit-host">${escapeHtml(host)}</span>
+                </div>
+                <div class="research-note-excerpt">${escapeHtml(h.snippet.slice(0, 400))}${h.snippet.length > 400 ? "…" : ""}</div>
+              </div>`;
+            })
+            .join("")
+        : "";
+      const counts = `${researchResult.notes.length} note${researchResult.notes.length === 1 ? "" : "s"}` +
+        (researchResult.webHits.length ? ` · ${researchResult.webHits.length} web` : "");
       card.innerHTML = `
         <summary>
           <span class="research-icon">🔬</span>
           <span class="research-title">Research notes</span>
-          <span class="research-meta">${researchResult.notes.length} note${researchResult.notes.length === 1 ? "" : "s"} · ${researchResult.fastModel}</span>
+          <span class="research-meta">${counts} · ${researchResult.fastModel}</span>
         </summary>
         <div class="research-body">
           ${researchResult.searchTerms.length ? `<div class="research-section"><div class="research-section-label">Search terms</div><div class="research-terms">${researchResult.searchTerms.map(t => `<span class="research-term">${escapeHtml(t)}</span>`).join("")}</div></div>` : ""}
           <div class="research-section"><div class="research-section-label">Notes</div>${notesHTML}</div>
+          ${webHTML ? `<div class="research-section"><div class="research-section-label">🌐 Web sources</div>${webHTML}</div>` : ""}
+          ${researchResult.webAnswer ? `<div class="research-section"><div class="research-section-label">Web summary</div><div class="research-outline">${renderMarkdown(researchResult.webAnswer)}</div></div>` : ""}
           ${researchResult.outline ? `<div class="research-section"><div class="research-section-label">Outline</div><div class="research-outline">${renderMarkdown(researchResult.outline)}</div></div>` : ""}
         </div>
       `;

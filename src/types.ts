@@ -19,9 +19,18 @@ export interface SearchHit {
   matchPos: number;
 }
 
+export interface WebHit {
+  title: string;
+  url: string;
+  snippet: string;
+  score: number | null;
+}
+
 export interface ResearchResult {
   searchTerms: string[];
   notes: { rel: string; excerpt: string }[];
+  webHits: WebHit[];
+  webAnswer: string | null;
   outline: string;
   fastModel: string;
 }
