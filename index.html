@@ -407,11 +407,11 @@
               </div>
 
               <div class="radio-transport">
-                <button class="radio-tx" id="radio-prev"  title="Previous">&#9198;</button>
-                <button class="radio-tx radio-tx-big" id="radio-play" title="Play / pause">&#9654;</button>
-                <button class="radio-tx" id="radio-next"  title="Next">&#9197;</button>
-                <button class="radio-tx" id="radio-shuffle" title="Shuffle picks" aria-pressed="true">&#128256;</button>
-                <button class="radio-tx" id="radio-record" title="Mark this track">&#9733;</button>
+                <button class="radio-tx" id="radio-prev" aria-label="Previous track" title="Previous">&#9198;</button>
+                <button class="radio-tx radio-tx-big" id="radio-play" aria-label="Play or pause" title="Play / pause">&#9654;</button>
+                <button class="radio-tx" id="radio-next" aria-label="Next track" title="Next">&#9197;</button>
+                <button class="radio-tx" id="radio-shuffle" aria-label="Shuffle picks" title="Shuffle picks" aria-pressed="true">&#128256;</button>
+                <button class="radio-tx" id="radio-record" aria-label="Mark this track" title="Mark this track">&#9733;</button>
               </div>
             </div>
           </section>
@@ -692,8 +692,8 @@
         <div class="call-status">incoming call</div>
       </div>
       <div class="call-actions">
-        <button id="call-decline" class="call-btn call-btn-decline" title="Decline">x</button>
-        <button id="call-accept" class="call-btn call-btn-accept" title="Accept">+</button>
+        <button id="call-decline" class="call-btn call-btn-decline" aria-label="Decline call" title="Decline">x</button>
+        <button id="call-accept" class="call-btn call-btn-accept" aria-label="Accept call" title="Accept">+</button>
       </div>
     </div>
 
@@ -718,7 +718,7 @@
             <h3 id="vinted-negotiate-title">Negotiation suggestion</h3>
             <a id="vinted-negotiate-listing" class="vinted-modal-listing" href="#" target="_blank" rel="noopener noreferrer"></a>
           </div>
-          <button id="vinted-negotiate-close" class="vinted-modal-close" title="Close">x</button>
+          <button id="vinted-negotiate-close" class="vinted-modal-close" aria-label="Close" title="Close">x</button>
         </header>
         <div class="vinted-modal-body">
           <div class="vinted-negotiate-grid">
@@ -767,7 +767,7 @@
     <div id="camera-panel" class="camera-panel hidden">
       <video id="camera-feed" autoplay muted playsinline></video>
       <div id="camera-overlay" class="camera-overlay">starting...</div>
-      <button id="camera-close" class="camera-close" title="Close">x</button>
+      <button id="camera-close" class="camera-close" aria-label="Close" title="Close">x</button>
     </div>
 
     <script type="module" src="/src/main.ts"></script>
