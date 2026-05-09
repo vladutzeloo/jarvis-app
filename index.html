@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JARVIS</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <!-- ============================================================
+         Background — animated circuit board, sits behind everything
+         ============================================================ -->
+    <div class="bg-circuit" aria-hidden="true">
+      <svg viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <!-- fine grid -->
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(92,217,255,0.06)" stroke-width="1"/>
+          </pattern>
+          <!-- via dots -->
+          <pattern id="vias" width="80" height="80" patternUnits="userSpaceOnUse">
+            <circle cx="40" cy="40" r="1.5" fill="rgba(92,217,255,0.22)"/>
+          </pattern>
+          <!-- hex tile -->
+          <pattern id="hex" width="60" height="52" patternUnits="userSpaceOnUse" patternTransform="translate(0,0)">
+            <polygon points="30,2 56,16 56,42 30,56 4,42 4,16" fill="none" stroke="rgba(92,217,255,0.05)" stroke-width="1"/>
+          </pattern>
+          <!-- glow gradient for traveling pulses -->
+          <radialGradient id="pulseGlow">
+            <stop offset="0%" stop-color="rgba(92,217,255,1)"/>
+            <stop offset="60%" stop-color="rgba(92,217,255,0.4)"/>
+            <stop offset="100%" stop-color="rgba(92,217,255,0)"/>
+          </radialGradient>
+          <!-- soft vignette -->
+          <radialGradient id="vignette" cx="50%" cy="50%" r="75%">
+            <stop offset="50%" stop-color="rgba(0,0,0,0)"/>
+            <stop offset="100%" stop-color="rgba(0,0,0,0.5)"/>
+          </radialGradient>
+        </defs>
+
+        <!-- base layers -->
+        <rect width="100%" height="100%" fill="url(#grid)"/>
+        <rect width="100%" height="100%" fill="url(#hex)"/>
+        <rect width="100%" height="100%" fill="url(#vias)"/>
+
+        <!-- circuit traces — hand-drawn, give the board a designed feel -->
+        <g class="trace-layer" stroke="rgba(92,217,255,0.18)" stroke-width="1.4" fill="none" stroke-linecap="square">
+          <path d="M 80 80 H 320 V 200 H 540 V 360 H 880" />
+          <path d="M 1520 120 H 1280 V 260 H 1080 V 380 H 920" />
+          <path d="M 60 540 V 720 H 240 V 880 H 480" />
+          <path d="M 1540 600 V 460 H 1340 V 320 H 1180" />
+          <path d="M 700 920 H 540 V 760 H 380" />
+          <path d="M 920 60 V 240 H 1120 V 100 H 1280" />
+          <path d="M 380 480 H 580 V 600 H 740" />
+          <path d="M 1080 540 H 1260 V 720 H 1100" />
+        </g>
+
+        <!-- nodes — small junctions where traces meet -->
+        <g class="node-layer">
+          <circle cx="320" cy="80"  r="3" />
+          <circle cx="540" cy="200" r="3" />
+          <circle cx="880" cy="360" r="3" />
+          <circle cx="1280" cy="120" r="3" />
+          <circle cx="1080" cy="260" r="3" />
+          <circle cx="920" cy="380" r="3" />
+          <circle cx="240" cy="720" r="3" />
+          <circle cx="480" cy="880" r="3" />
+          <circle cx="1340" cy="460" r="3" />
+          <circle cx="1180" cy="320" r="3" />
+          <circle cx="540" cy="920" r="3" />
+          <circle cx="380" cy="760" r="3" />
+          <circle cx="1120" cy="240" r="3" />
+          <circle cx="580" cy="480" r="3" />
+          <circle cx="740" cy="600" r="3" />
+          <circle cx="1260" cy="540" r="3" />
+        </g>
+
+        <!-- traveling pulses — circles that follow the longest traces -->
+        <g class="pulse-layer">
+          <circle r="3" fill="url(#pulseGlow)">
+            <animateMotion dur="9s" repeatCount="indefinite"
+              path="M 80 80 H 320 V 200 H 540 V 360 H 880" />
+          </circle>
+          <circle r="3" fill="url(#pulseGlow)">
+            <animateMotion dur="11s" repeatCount="indefinite" begin="-3s"
+              path="M 1520 120 H 1280 V 260 H 1080 V 380 H 920" />
+          </circle>
+          <circle r="3" fill="url(#pulseGlow)">
+            <animateMotion dur="10s" repeatCount="indefinite" begin="-6s"
+              path="M 60 540 V 720 H 240 V 880 H 480" />
+          </circle>
+          <circle r="3" fill="url(#pulseGlow)">
+            <animateMotion dur="12s" repeatCount="indefinite" begin="-2s"
+              path="M 1540 600 V 460 H 1340 V 320 H 1180" />
+          </circle>
+        </g>
+
+        <!-- corner HUD reticles -->
+        <g class="reticle-tl" transform="translate(80,80)" stroke="rgba(92,217,255,0.45)" fill="none" stroke-width="1.2">
+          <circle r="20" stroke-dasharray="4 4"/>
+          <circle r="8"/>
+          <line x1="-30" y1="0" x2="-12" y2="0"/>
+          <line x1="12" y1="0" x2="30" y2="0"/>
+          <line x1="0" y1="-30" x2="0" y2="-12"/>
+          <line x1="0" y1="12" x2="0" y2="30"/>
+        </g>
+        <g class="reticle-br" transform="translate(1520,920)" stroke="rgba(92,217,255,0.45)" fill="none" stroke-width="1.2">
+          <circle r="24" stroke-dasharray="3 5"/>
+          <circle r="10" stroke-dasharray="2 3"/>
+          <line x1="-34" y1="0" x2="-14" y2="0"/>
+          <line x1="14" y1="0" x2="34" y2="0"/>
+        </g>
+
+        <!-- Cooling fans — rotate continuously -->
+        <g class="fan fan-1" transform="translate(1380, 220)">
+          <!-- square housing with rounded screws at corners -->
+          <rect x="-90" y="-90" width="180" height="180" rx="14" fill="none" stroke="rgba(92,217,255,0.16)" stroke-width="1.2"/>
+          <circle cx="-78" cy="-78" r="3" fill="rgba(92,217,255,0.3)"/>
+          <circle cx="78"  cy="-78" r="3" fill="rgba(92,217,255,0.3)"/>
+          <circle cx="-78" cy="78"  r="3" fill="rgba(92,217,255,0.3)"/>
+          <circle cx="78"  cy="78"  r="3" fill="rgba(92,217,255,0.3)"/>
+          <!-- inner ring -->
+          <circle r="78" fill="none" stroke="rgba(92,217,255,0.18)" stroke-width="1"/>
+          <circle r="68" fill="none" stroke="rgba(92,217,255,0.10)" stroke-width="1"/>
+          <!-- spinning blades -->
+          <g class="fan-blades">
+            <path d="M -8,-14 C -22,-28 -32,-58 0,-64 C 32,-58 22,-28 8,-14 Z"/>
+            <path d="M -8,-14 C -22,-28 -32,-58 0,-64 C 32,-58 22,-28 8,-14 Z" transform="rotate(51.4286)"/>
+            <path d="M -8,-14 C -22,-28 -32,-58 0,-64 C 32,-58 22,-28 8,-14 Z" transform="rotate(102.8571)"/>
+            <path d="M -8,-14 C -22,-28 -32,-58 0,-64 C 32,-58 22,-28 8,-14 Z" transform="rotate(154.2857)"/>
+            <path d="M -8,-14 C -22,-28 -32,-58 0,-64 C 32,-58 22,-28 8,-14 Z" transform="rotate(205.7143)"/>
+            <path d="M -8,-14 C -22,-28 -32,-58 0,-64 C 32,-58 22,-28 8,-14 Z" transform="rotate(257.1429)"/>
+            <path d="M -8,-14 C -22,-28 -32,-58 0,-64 C 32,-58 22,-28 8,-14 Z" transform="rotate(308.5714)"/>
+          </g>
+          <!-- hub -->
+          <circle r="14" fill="rgba(92,217,255,0.18)" stroke="rgba(92,217,255,0.5)" stroke-width="1.4"/>
+          <circle r="3" fill="rgba(92,217,255,0.9)"/>
+          <text x="-30" y="105" font-family="JetBrains Mono, Consolas, monospace" font-size="9" fill="rgba(92,217,255,0.45)" letter-spacing="2">FAN A · 1800 RPM</text>
+        </g>
+
+        <g class="fan fan-2" transform="translate(140, 540)">
+          <rect x="-110" y="-110" width="220" height="220" rx="16" fill="none" stroke="rgba(92,217,255,0.14)" stroke-width="1.2"/>
+          <circle cx="-95" cy="-95" r="3" fill="rgba(92,217,255,0.3)"/>
+          <circle cx="95"  cy="-95" r="3" fill="rgba(92,217,255,0.3)"/>
+          <circle cx="-95" cy="95"  r="3" fill="rgba(92,217,255,0.3)"/>
+          <circle cx="95"  cy="95"  r="3" fill="rgba(92,217,255,0.3)"/>
+          <circle r="96" fill="none" stroke="rgba(92,217,255,0.16)" stroke-width="1"/>
+          <circle r="84" fill="none" stroke="rgba(92,217,255,0.08)" stroke-width="1"/>
+          <g class="fan-blades">
+            <path d="M -10,-16 C -28,-32 -40,-72 0,-78 C 40,-72 28,-32 10,-16 Z"/>
+            <path d="M -10,-16 C -28,-32 -40,-72 0,-78 C 40,-72 28,-32 10,-16 Z" transform="rotate(51.4286)"/>
+            <path d="M -10,-16 C -28,-32 -40,-72 0,-78 C 40,-72 28,-32 10,-16 Z" transform="rotate(102.8571)"/>
+            <path d="M -10,-16 C -28,-32 -40,-72 0,-78 C 40,-72 28,-32 10,-16 Z" transform="rotate(154.2857)"/>
+            <path d="M -10,-16 C -28,-32 -40,-72 0,-78 C 40,-72 28,-32 10,-16 Z" transform="rotate(205.7143)"/>
+            <path d="M -10,-16 C -28,-32 -40,-72 0,-78 C 40,-72 28,-32 10,-16 Z" transform="rotate(257.1429)"/>
+            <path d="M -10,-16 C -28,-32 -40,-72 0,-78 C 40,-72 28,-32 10,-16 Z" transform="rotate(308.5714)"/>
+          </g>
+          <circle r="16" fill="rgba(92,217,255,0.18)" stroke="rgba(92,217,255,0.5)" stroke-width="1.4"/>
+          <circle r="3.5" fill="rgba(92,217,255,0.9)"/>
+          <text x="-32" y="125" font-family="JetBrains Mono, Consolas, monospace" font-size="9" fill="rgba(92,217,255,0.45)" letter-spacing="2">FAN B · 1200 RPM</text>
+        </g>
+
+        <g class="fan fan-3" transform="translate(820, 880)">
+          <rect x="-72" y="-72" width="144" height="144" rx="12" fill="none" stroke="rgba(92,217,255,0.14)" stroke-width="1.2"/>
+          <circle cx="-60" cy="-60" r="2.5" fill="rgba(92,217,255,0.3)"/>
+          <circle cx="60"  cy="-60" r="2.5" fill="rgba(92,217,255,0.3)"/>
+          <circle cx="-60" cy="60"  r="2.5" fill="rgba(92,217,255,0.3)"/>
+          <circle cx="60"  cy="60"  r="2.5" fill="rgba(92,217,255,0.3)"/>
+          <circle r="62" fill="none" stroke="rgba(92,217,255,0.16)" stroke-width="1"/>
+          <circle r="52" fill="none" stroke="rgba(92,217,255,0.08)" stroke-width="1"/>
+          <g class="fan-blades">
+            <path d="M -7,-12 C -18,-22 -26,-48 0,-52 C 26,-48 18,-22 7,-12 Z"/>
+            <path d="M -7,-12 C -18,-22 -26,-48 0,-52 C 26,-48 18,-22 7,-12 Z" transform="rotate(51.4286)"/>
+            <path d="M -7,-12 C -18,-22 -26,-48 0,-52 C 26,-48 18,-22 7,-12 Z" transform="rotate(102.8571)"/>
+            <path d="M -7,-12 C -18,-22 -26,-48 0,-52 C 26,-48 18,-22 7,-12 Z" transform="rotate(154.2857)"/>
+            <path d="M -7,-12 C -18,-22 -26,-48 0,-52 C 26,-48 18,-22 7,-12 Z" transform="rotate(205.7143)"/>
+            <path d="M -7,-12 C -18,-22 -26,-48 0,-52 C 26,-48 18,-22 7,-12 Z" transform="rotate(257.1429)"/>
+            <path d="M -7,-12 C -18,-22 -26,-48 0,-52 C 26,-48 18,-22 7,-12 Z" transform="rotate(308.5714)"/>
+          </g>
+          <circle r="12" fill="rgba(92,217,255,0.18)" stroke="rgba(92,217,255,0.5)" stroke-width="1.4"/>
+          <circle r="2.5" fill="rgba(92,217,255,0.9)"/>
+          <text x="-32" y="92" font-family="JetBrains Mono, Consolas, monospace" font-size="9" fill="rgba(92,217,255,0.45)" letter-spacing="2">FAN C · 2400 RPM</text>
+        </g>
+
+        <!-- diagonal scaffolding lines for depth -->
+        <g stroke="rgba(92,217,255,0.07)" stroke-width="1" fill="none">
+          <line x1="0" y1="60" x2="1600" y2="60"/>
+          <line x1="0" y1="940" x2="1600" y2="940"/>
+          <line x1="60" y1="0" x2="60" y2="1000"/>
+          <line x1="1540" y1="0" x2="1540" y2="1000"/>
+        </g>
+
+        <!-- HUD micro-text in monospace, subtle -->
+        <g fill="rgba(92,217,255,0.35)" font-family="JetBrains Mono, Consolas, monospace" font-size="10" letter-spacing="2">
+          <text x="86" y="120">SYS//ONLINE</text>
+          <text x="1400" y="156">CH:01</text>
+          <text x="1400" y="172">CH:02</text>
+          <text x="1400" y="188">CH:03</text>
+          <text x="86" y="780">PWR ◯</text>
+          <text x="86" y="800">NET ◯</text>
+          <text x="86" y="820">GPU ◯</text>
+        </g>
+
+        <!-- vignette overlay -->
+        <rect width="100%" height="100%" fill="url(#vignette)"/>
+      </svg>
+    </div>
+
+    <header>
+      <div class="brand">JARVIS</div>
+      <nav class="tabs">
+        <button class="tab active" data-tab="chat">Chat</button>
+        <button class="tab" data-tab="workspace">Workspace</button>
+        <button class="tab" data-tab="brain">Brain</button>
+      </nav>
+      <div id="stats" class="stats"></div>
+    </header>
+
+    <!-- Cockpit HUD bar — always visible, live system + token stats -->
+    <div id="cockpit" class="cockpit">
+      <div class="cockpit-cell" data-key="cpu" title="CPU usage">
+        <span class="cockpit-label">CPU</span>
+        <span class="cockpit-value">—</span>
+        <span class="cockpit-bar"><span class="cockpit-bar-fill"></span></span>
+      </div>
+      <div class="cockpit-cell" data-key="ram" title="Memory used / total">
+        <span class="cockpit-label">RAM</span>
+        <span class="cockpit-value">—</span>
+        <span class="cockpit-bar"><span class="cockpit-bar-fill"></span></span>
+      </div>
+      <div class="cockpit-cell" data-key="gpu" title="GPU utilisation">
+        <span class="cockpit-label">GPU</span>
+        <span class="cockpit-value">—</span>
+        <span class="cockpit-bar"><span class="cockpit-bar-fill"></span></span>
+      </div>
+      <div class="cockpit-cell" data-key="vram" title="VRAM used / total">
+        <span class="cockpit-label">VRAM</span>
+        <span class="cockpit-value">—</span>
+        <span class="cockpit-bar"><span class="cockpit-bar-fill"></span></span>
+      </div>
+      <div class="cockpit-cell" data-key="temp" title="GPU temperature">
+        <span class="cockpit-label">TEMP</span>
+        <span class="cockpit-value">—</span>
+      </div>
+      <div class="cockpit-cell" data-key="power" title="GPU power draw">
+        <span class="cockpit-label">PWR</span>
+        <span class="cockpit-value">—</span>
+      </div>
+      <div class="cockpit-cell" data-key="tokens-session" title="Tokens this session">
+        <span class="cockpit-label">SESS</span>
+        <span class="cockpit-value">0 tok</span>
+      </div>
+      <div class="cockpit-cell" data-key="tokens-total" title="Tokens cumulative">
+        <span class="cockpit-label">TOTAL</span>
+        <span class="cockpit-value">0 tok</span>
+      </div>
+      <div class="cockpit-cell cockpit-loaded" data-key="loaded" title="Currently loaded Ollama model">
+        <span class="cockpit-label">LOADED</span>
+        <span class="cockpit-value">—</span>
+      </div>
+    </div>
+
+    <!-- Chat tab -->
+    <section class="view active" data-view="chat">
+      <div class="toolbar">
+        <select id="model-picker" title="Model"></select>
+        <button id="clear" title="New conversation">⟲ New</button>
+        <button id="settings-toggle" title="Tweaks: temperature, system prompt, context length...">⚙</button>
+        <button id="research-toggle" title="Research mode: fast model researches your Brain, heavy model answers">🔬</button>
+        <button id="voice-toggle" title="Speak responses" class="voice-on">🔊</button>
+        <button id="camera-toggle" title="Toggle camera + gestures">📹</button>
+        <span id="tts-engine" class="tts-engine" title="Active speech engine">🌐 Web Speech</span>
+        <select id="tts-style" title="JARVIS voice style">
+          <option value="alan">Alan — proper</option>
+          <option value="narrator">Narrator — deeper</option>
+          <option value="orc">Orc — gravelly</option>
+        </select>
+        <select id="voice-picker" title="Fallback voice (used when Piper offline)"></select>
+        <button id="stop-speaking" title="Stop speaking" class="hidden">⏹</button>
+      </div>
+      <main id="chat" class="chat"></main>
+      <footer class="chat-footer">
+        <textarea id="input" placeholder="Ask JARVIS — or click the mic..." rows="2" autofocus></textarea>
+        <button id="mic" title="Dictate (click to start/stop)">🎙</button>
+        <button id="send">Send</button>
+      </footer>
+    </section>
+
+    <!-- Workspace tab -->
+    <section class="view" data-view="workspace">
+      <div class="ws-toolbar">
+        <button id="ws-open-folder" class="ghost" title="Open folder">📁 Open</button>
+        <span id="ws-folder-path" class="ws-folder-path">No folder open</span>
+        <span id="ws-file-info" class="ws-file-info"></span>
+        <button id="ws-save" class="ghost" title="Save (Ctrl+S)" disabled>Save</button>
+        <button id="ws-revert" class="ghost" title="Revert unsaved changes" disabled>Revert</button>
+        <span id="ws-dirty" class="ws-dirty hidden">●</span>
+      </div>
+      <div class="ws-body">
+        <aside id="ws-tree" class="ws-tree">
+          <div class="ws-tree-empty">Open a folder to start editing.</div>
+        </aside>
+        <div id="ws-editor" class="ws-editor">
+          <div class="ws-editor-empty">Pick a file from the tree to edit.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Brain tab -->
+    <section class="view" data-view="brain">
+      <div class="brain-pane">
+        <div class="brain-header">
+          <input id="brain-search" placeholder="Search your knowledge base…" />
+          <button id="brain-settings" class="ghost" title="Configure vault">⚙</button>
+        </div>
+
+        <!-- Brain visualization — neural network style -->
+        <div class="brain-viz">
+          <svg class="brain-viz-svg" viewBox="0 0 460 280" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="brain-core-grad">
+                <stop offset="0%"  stop-color="rgba(92,217,255,1)" />
+                <stop offset="60%" stop-color="rgba(92,217,255,0.4)" />
+                <stop offset="100%" stop-color="rgba(92,217,255,0)" />
+              </radialGradient>
+            </defs>
+            <!-- sonar rings -->
+            <circle class="brain-sonar" cx="230" cy="140" r="40" />
+            <circle class="brain-sonar brain-sonar-2" cx="230" cy="140" r="40" />
+            <circle class="brain-sonar brain-sonar-3" cx="230" cy="140" r="40" />
+            <!-- static rings (orbital lines) -->
+            <circle class="brain-orbit" cx="230" cy="140" r="48"/>
+            <circle class="brain-orbit" cx="230" cy="140" r="78"/>
+            <circle class="brain-orbit" cx="230" cy="140" r="108"/>
+            <circle class="brain-orbit" cx="230" cy="140" r="132"/>
+            <!-- core -->
+            <circle class="brain-core-glow" cx="230" cy="140" r="22" fill="url(#brain-core-grad)"/>
+            <circle class="brain-core" cx="230" cy="140" r="9"/>
+            <!-- nodes filled in by JS -->
+            <g class="brain-nodes"></g>
+            <!-- firing pulses (small fading dots) drawn dynamically by JS -->
+            <g class="brain-pulses"></g>
+          </svg>
+          <div class="brain-stats">
+            <div class="brain-stat"><span class="brain-stat-value" id="brain-stat-notes">0</span><span class="brain-stat-label">Notes</span></div>
+            <div class="brain-stat"><span class="brain-stat-value" id="brain-stat-words">0</span><span class="brain-stat-label">Words</span></div>
+            <div class="brain-stat"><span class="brain-stat-value" id="brain-stat-active">0</span><span class="brain-stat-label">Active</span></div>
+          </div>
+        </div>
+
+        <div id="brain-status" class="brain-status">No vault configured yet.</div>
+        <div id="brain-results" class="brain-results"></div>
+      </div>
+    </section>
+
+    <!-- Settings drawer -->
+    <aside id="settings-drawer" class="settings-drawer hidden">
+      <div class="settings-header">
+        <span class="settings-title">Tweaks</span>
+        <button id="settings-close" class="ghost" title="Close">×</button>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-label">Sampling preset</div>
+        <div class="settings-presets">
+          <button class="preset-btn" data-preset="focused" title="Deterministic — code, factual">Focused</button>
+          <button class="preset-btn" data-preset="balanced" title="Default chat">Balanced</button>
+          <button class="preset-btn" data-preset="creative" title="Wide exploration — writing, brainstorm">Creative</button>
+          <button class="preset-btn" data-preset="custom" title="Manual">Custom</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-row">
+          <label for="settings-temperature">Temperature <span class="settings-hint">randomness</span></label>
+          <span class="settings-value" id="settings-temperature-value">0.7</span>
+        </div>
+        <input type="range" id="settings-temperature" min="0" max="2" step="0.05" value="0.7" />
+
+        <div class="settings-row">
+          <label for="settings-top-p">Top-p <span class="settings-hint">nucleus</span></label>
+          <span class="settings-value" id="settings-top-p-value">0.9</span>
+        </div>
+        <input type="range" id="settings-top-p" min="0" max="1" step="0.01" value="0.9" />
+
+        <div class="settings-row">
+          <label for="settings-top-k">Top-k <span class="settings-hint">candidate count</span></label>
+          <span class="settings-value" id="settings-top-k-value">40</span>
+        </div>
+        <input type="range" id="settings-top-k" min="1" max="100" step="1" value="40" />
+
+        <div class="settings-row">
+          <label for="settings-repeat-penalty">Repeat penalty</label>
+          <span class="settings-value" id="settings-repeat-penalty-value">1.05</span>
+        </div>
+        <input type="range" id="settings-repeat-penalty" min="1" max="2" step="0.01" value="1.05" />
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-label">Limits</div>
+        <div class="settings-row">
+          <label for="settings-num-ctx">Context window</label>
+          <span class="settings-value" id="settings-num-ctx-value">4096</span>
+        </div>
+        <input type="range" id="settings-num-ctx" min="512" max="32768" step="512" value="4096" />
+
+        <div class="settings-row">
+          <label for="settings-num-predict">Max output tokens <span class="settings-hint">-1 = unlimited</span></label>
+          <span class="settings-value" id="settings-num-predict-value">unlimited</span>
+        </div>
+        <input type="range" id="settings-num-predict" min="-1" max="4096" step="64" value="-1" />
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-label">Integrations · NVIDIA</div>
+        <div class="settings-row">
+          <label for="settings-nvidia-key">API key</label>
+          <span class="settings-value" id="settings-nvidia-key-status">not set</span>
+        </div>
+        <input type="password" id="settings-nvidia-key" placeholder="nvapi-…" autocomplete="off" spellcheck="false" />
+
+        <div class="settings-row">
+          <label for="settings-nvidia-base">Base URL</label>
+        </div>
+        <input type="text" id="settings-nvidia-base" placeholder="https://integrate.api.nvidia.com/v1" spellcheck="false" />
+
+        <div class="settings-row">
+          <label for="settings-nvidia-default">Default model</label>
+        </div>
+        <input type="text" id="settings-nvidia-default" placeholder="meta/llama-3.1-70b-instruct" spellcheck="false" />
+
+        <div class="settings-actions">
+          <button id="settings-nvidia-save" class="ghost" title="Write to .env">Save to .env</button>
+          <button id="settings-nvidia-test" class="ghost" title="Fetch model list to verify the key">Test</button>
+          <span class="settings-nvidia-msg" id="settings-nvidia-msg"></span>
+        </div>
+        <div class="settings-hint settings-nvidia-path" id="settings-nvidia-path"></div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-label">System prompt</div>
+        <textarea id="settings-system-prompt" rows="5" placeholder="You are JARVIS, a personal AI assistant. Be concise, helpful, and direct."></textarea>
+        <div class="settings-actions">
+          <button id="settings-reset" class="ghost" title="Reset all to defaults">Reset</button>
+          <span class="settings-saved-indicator" id="settings-saved">Saved ✓</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Incoming call notification (slides in) -->
+    <div id="call-notification" class="call-notification hidden">
+      <div class="call-avatar">
+        <span class="ring-1"></span>
+        <span class="ring-2"></span>
+        <span class="ring-3"></span>
+        <div class="call-avatar-core">J</div>
+      </div>
+      <div class="call-info">
+        <div class="call-from">JARVIS</div>
+        <div class="call-status">incoming call</div>
+      </div>
+      <div class="call-actions">
+        <button id="call-decline" class="call-btn call-btn-decline" title="Decline">✕</button>
+        <button id="call-accept" class="call-btn call-btn-accept" title="Accept">✓</button>
+      </div>
+    </div>
+
+    <!-- Voice call dialog (full-screen modal) -->
+    <div id="call-dialog" class="call-dialog hidden">
+      <div class="call-dialog-backdrop"></div>
+      <div class="call-dialog-content">
+        <div class="call-dialog-avatar">
+          <canvas id="call-waveform" width="420" height="420"></canvas>
+          <div class="call-dialog-core">JARVIS</div>
+        </div>
+        <div class="call-dialog-name">Active call · JARVIS</div>
+        <div id="call-dialog-status" class="call-dialog-status">connected</div>
+        <button id="call-hangup" class="call-btn-hangup" title="End call">end call</button>
+      </div>
+    </div>
+
+    <!-- Camera + gesture preview (floating, fixed position) -->
+    <div id="camera-panel" class="camera-panel hidden">
+      <video id="camera-feed" autoplay muted playsinline></video>
+      <div id="camera-overlay" class="camera-overlay">starting…</div>
+      <button id="camera-close" class="camera-close" title="Close">×</button>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
