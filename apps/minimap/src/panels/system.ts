@@ -48,18 +48,27 @@ export function mountSystem(api: Api, getPollMs: () => number) {
   let aborter: AbortController | undefined;
 
   async function tick() {
+    if (timer != null) {
+      window.clearTimeout(timer);
+      timer = undefined;
+    }
     aborter?.abort();
-    aborter = new AbortController();
+    const local = new AbortController();
+    aborter = local;
     try {
-      const s = await api.systemStats(aborter.signal);
+      const s = await api.systemStats(local.signal);
+      if (local.signal.aborted) return;
       root.innerHTML = render(s);
     } catch (e: unknown) {
+      if (local.signal.aborted) return;
       if ((e as { name?: string }).name === "AbortError") return;
       root.innerHTML = `<div class="muted">stats unavailable: ${escapeHtml(
         (e as Error).message ?? e,
       )}</div>`;
     } finally {
-      timer = window.setTimeout(tick, getPollMs());
+      if (!local.signal.aborted) {
+        timer = window.setTimeout(tick, getPollMs());
+      }
     }
   }
 

@@ -66,13 +66,25 @@ export function mountJobs(api: Api, getPollMs: () => number, handlers: Handlers)
   });
 
   async function tick() {
+    if (timer != null) {
+      window.clearTimeout(timer);
+      timer = undefined;
+    }
     aborter?.abort();
-    aborter = new AbortController();
+    const local = new AbortController();
+    aborter = local;
     try {
       const [jobs, bots] = await Promise.all([
-        api.rufloJobs(aborter.signal).catch(() => [] as RufloJob[]),
-        api.vintedBots(aborter.signal).catch(() => [] as VintedBot[]),
+        api.rufloJobs(local.signal).catch((e) => {
+          if (local.signal.aborted) throw e;
+          return [] as RufloJob[];
+        }),
+        api.vintedBots(local.signal).catch((e) => {
+          if (local.signal.aborted) throw e;
+          return [] as VintedBot[];
+        }),
       ]);
+      if (local.signal.aborted) return;
       root.innerHTML = `
         <div class="section-label">ruflo jobs</div>
         ${renderJobs(jobs)}
@@ -81,10 +93,14 @@ export function mountJobs(api: Api, getPollMs: () => number, handlers: Handlers)
       `;
       handlers.onJobs?.(jobs);
     } catch (e: unknown) {
+      if (local.signal.aborted) return;
       if ((e as { name?: string }).name === "AbortError") return;
       root.innerHTML = `<div class="muted">jobs unavailable</div>`;
     } finally {
-      timer = window.setTimeout(tick, getPollMs());
+      // Only the most recent tick should reschedule.
+      if (!local.signal.aborted) {
+        timer = window.setTimeout(tick, getPollMs());
+      }
     }
   }
 
