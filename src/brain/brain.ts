@@ -6,14 +6,6 @@ import { readDir, readTextFile, exists } from "@tauri-apps/plugin-fs";
 import type { IndexedDoc, SearchHit } from "../types";
 
 const STORAGE_VAULT = "jarvis.vault.path";
-// Canonical vault: the own-jarvis repo (Obsidian vault at the repo root).
-// See https://github.com/vladutzeloo/own-jarvis.
-const DEFAULT_VAULT = "C:\\Users\\vdzoo\\Documents\\GitHub\\own-jarvis";
-// Legacy paths from earlier versions — auto-migrate to DEFAULT_VAULT on next launch.
-const LEGACY_VAULT_PATHS = new Set<string>([
-  "C:\\Users\\vdzoo\\Documents\\obisidian\\brain",
-  "C:\\Users\\vdzoo\\Documents\\obsidian\\brain",
-]);
 
 const brainSearch = document.getElementById("brain-search") as HTMLInputElement;
 const brainSettings = document.getElementById("brain-settings") as HTMLButtonElement;
@@ -21,11 +13,11 @@ const brainStatus = document.getElementById("brain-status") as HTMLElement;
 const brainResults = document.getElementById("brain-results") as HTMLElement;
 const chatInput = document.getElementById("input") as HTMLTextAreaElement;
 
+// No baked-in default — first launch shows the "no vault configured" prompt
+// and the user picks their path via the ⚙ button. The own-jarvis repo
+// (https://github.com/vladutzeloo/own-jarvis) is the intended target on the
+// author's machine but isn't a sensible default for anyone else.
 let vaultPath = localStorage.getItem(STORAGE_VAULT) || "";
-if (!vaultPath || LEGACY_VAULT_PATHS.has(vaultPath)) {
-  vaultPath = DEFAULT_VAULT;
-  localStorage.setItem(STORAGE_VAULT, vaultPath);
-}
 let vaultIndex: IndexedDoc[] | null = null;
 let indexingInFlight: Promise<void> | null = null;
 let lastIndexedPath = "";
@@ -72,7 +64,7 @@ export function refreshBrainStatus() {
 brainSettings?.addEventListener("click", () => {
   const next = prompt(
     "Path to your Obsidian vault (we'll search markdown files here):",
-    vaultPath || DEFAULT_VAULT,
+    vaultPath,
   );
   if (next == null) return;
   const trimmed = next.trim();

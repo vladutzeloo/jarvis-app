@@ -35,14 +35,7 @@ async function fetchOllamaModels(): Promise<string[]> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
   const models: { name: string }[] = data.models || [];
-  return models
-    .map(m => m.name)
-    .sort((a, b) => {
-      const aCustom = a.includes("4070");
-      const bCustom = b.includes("4070");
-      if (aCustom !== bCustom) return aCustom ? -1 : 1;
-      return a.localeCompare(b);
-    });
+  return models.map(m => m.name).sort((a, b) => a.localeCompare(b));
 }
 
 async function fetchNvidiaModels(): Promise<NvidiaModel[]> {
