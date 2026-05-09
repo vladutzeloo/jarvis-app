@@ -211,6 +211,7 @@
       <nav class="tabs">
         <button class="tab active" data-tab="chat">Chat</button>
         <button class="tab" data-tab="workspace">Workspace</button>
+        <button class="tab" data-tab="agents">Agents</button>
         <button class="tab" data-tab="brain">Brain</button>
       </nav>
       <div id="stats" class="stats"></div>
@@ -303,6 +304,53 @@
         </aside>
         <div id="ws-editor" class="ws-editor">
           <div class="ws-editor-empty">Pick a file from the tree to edit.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Agents tab — ruflo multi-agent runner -->
+    <section class="view" data-view="agents">
+      <div class="agents-toolbar">
+        <span class="agents-status" id="agents-status" title="Bridge status">
+          <span class="agents-status-dot"></span>
+          <span class="agents-status-text">probing…</span>
+        </span>
+        <span class="agents-version" id="agents-version"></span>
+        <span class="agents-spacer"></span>
+        <button id="agents-clear-console" class="ghost" title="Clear output">⌫ Clear</button>
+        <button id="agents-cancel" class="ghost" title="Cancel running job" disabled>⏹ Cancel</button>
+      </div>
+      <div class="agents-body">
+        <aside class="agents-rail">
+          <div class="agents-rail-label">Presets</div>
+          <ul class="agents-presets" id="agents-presets"></ul>
+          <div class="agents-rail-help">
+            Presets fill the form below. Edit before running. Every command
+            is dispatched server-side as
+            <code>npx -y ruflo@latest &lt;argv&gt;</code>.
+          </div>
+        </aside>
+        <div class="agents-main">
+          <form class="agents-form" id="agents-form" autocomplete="off">
+            <label class="agents-field">
+              <span class="agents-field-label">Subcommand args</span>
+              <textarea
+                id="agents-argv"
+                rows="3"
+                spellcheck="false"
+                placeholder="--version"
+              ></textarea>
+              <span class="agents-field-hint">
+                One token per whitespace-separated word. Quote with " or ' to
+                keep spaces. Leading <code>npx ruflo</code> is added by the bridge.
+              </span>
+            </label>
+            <div class="agents-form-actions">
+              <button type="submit" class="agents-run" id="agents-run">▶ Run</button>
+              <span class="agents-job-id" id="agents-job-id"></span>
+            </div>
+          </form>
+          <pre class="agents-console" id="agents-console" aria-live="polite"></pre>
         </div>
       </div>
     </section>

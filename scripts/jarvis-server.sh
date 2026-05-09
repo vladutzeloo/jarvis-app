@@ -3,12 +3,14 @@
 # setup-piper.sh + setup-orc.sh + setup-cockpit.sh trio.
 #
 # Usage:
-#   bash scripts/jarvis-server.sh [--piper] [--styles] [--cockpit] [--all]
+#   bash scripts/jarvis-server.sh [--piper] [--styles] [--cockpit] [--ruflo] [--all]
 #
-# Flags map to the three feature layers:
+# Flags map to the four feature layers:
 #   --piper    install Piper, download the en_GB-alan voice, copy server.py
 #   --styles   add sox so STYLES (orc / narrator) actually post-process
 #   --cockpit  add psutil for /system-stats
+#   --ruflo    enable the ruflo runner (multi-agent orchestration via npx);
+#              requires node + npx already on PATH inside WSL
 #   --all      do all of the above (default if no flags given)
 #
 # The Python sources live under server/ in this repo. They get copied (not
@@ -25,22 +27,31 @@ SERVICE_USER="${SUDO_USER:-$USER}"
 DO_PIPER=0
 DO_STYLES=0
 DO_COCKPIT=0
+DO_RUFLO=0
 
 if [ $# -eq 0 ]; then
-    DO_PIPER=1; DO_STYLES=1; DO_COCKPIT=1
+    DO_PIPER=1; DO_STYLES=1; DO_COCKPIT=1; DO_RUFLO=1
 else
     for arg in "$@"; do
         case "$arg" in
             --piper)   DO_PIPER=1 ;;
             --styles)  DO_STYLES=1 ;;
             --cockpit) DO_COCKPIT=1 ;;
-            --all)     DO_PIPER=1; DO_STYLES=1; DO_COCKPIT=1 ;;
+            --ruflo)   DO_RUFLO=1 ;;
+            --all)     DO_PIPER=1; DO_STYLES=1; DO_COCKPIT=1; DO_RUFLO=1 ;;
             -h|--help)
                 grep -E '^# ' "$0" | sed 's/^# //; s/^#//'
                 exit 0 ;;
             *) echo "Unknown flag: $arg"; exit 1 ;;
         esac
     done
+fi
+
+# Carry forward a previous ruflo install on partial re-runs, so installing
+# just (e.g.) --piper later doesn't quietly strip the runner's PATH override
+# from the systemd unit.
+if [ -f "$INSTALL_DIR/ruflo_runner.py" ] && [ "$DO_RUFLO" = "0" ]; then
+    DO_RUFLO=1
 fi
 
 # Piper requires the directory + venv before anything else can install into it.
@@ -84,10 +95,30 @@ if [ "$DO_COCKPIT" = "1" ]; then
     "$INSTALL_DIR/venv/bin/pip" install --quiet psutil
 fi
 
+NODE_BIN_DIR=""
+if [ "$DO_RUFLO" = "1" ]; then
+    echo "[ruflo] checking for node + npx ..."
+    if ! command -v node >/dev/null || ! command -v npx >/dev/null; then
+        echo "        node/npx not found on PATH."
+        echo "        Install Node.js >=18 inside WSL first, e.g. via nvm:"
+        echo "          curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash"
+        echo "          . ~/.nvm/nvm.sh && nvm install --lts"
+        echo "        then re-run: bash scripts/jarvis-server.sh --ruflo"
+        exit 1
+    fi
+    NODE_BIN_DIR="$(dirname "$(command -v npx)")"
+    echo "        node:  $(command -v node) ($(node --version))"
+    echo "        npx:   $(command -v npx)"
+    echo "        bin:   $NODE_BIN_DIR (will be added to systemd PATH)"
+fi
+
 echo "[server] copying Python modules from $SERVER_SRC -> $INSTALL_DIR ..."
 cp "$SERVER_SRC/server.py" "$INSTALL_DIR/server.py"
 cp "$SERVER_SRC/synthesis.py" "$INSTALL_DIR/synthesis.py"
 cp "$SERVER_SRC/system_stats.py" "$INSTALL_DIR/system_stats.py"
+if [ "$DO_RUFLO" = "1" ]; then
+    cp "$SERVER_SRC/ruflo_runner.py" "$INSTALL_DIR/ruflo_runner.py"
+fi
 
 if [ "$DO_PIPER" = "1" ]; then
     echo "[piper] generating test.wav ..."
@@ -97,9 +128,17 @@ if [ "$DO_PIPER" = "1" ]; then
 fi
 
 echo "[systemd] writing /etc/systemd/system/jarvis-tts.service ..."
+RUFLO_PATH_LINE=""
+RUFLO_HOME_LINE=""
+if [ "$DO_RUFLO" = "1" ] && [ -n "$NODE_BIN_DIR" ]; then
+    # Make node/npx visible to subprocess.Popen and let npx locate its cache
+    # under the invoking user's HOME (systemd otherwise sets HOME=/).
+    RUFLO_PATH_LINE="Environment=PATH=$NODE_BIN_DIR:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    RUFLO_HOME_LINE="Environment=HOME=$HOME"
+fi
 sudo tee /etc/systemd/system/jarvis-tts.service > /dev/null <<EOF
 [Unit]
-Description=JARVIS server (Piper TTS + system stats)
+Description=JARVIS server (Piper TTS + system stats + ruflo runner)
 After=network.target
 
 [Service]
@@ -107,6 +146,8 @@ Type=simple
 User=$SERVICE_USER
 WorkingDirectory=$INSTALL_DIR
 Environment=JARVIS_VOICE_PATH=$INSTALL_DIR/voices/en_GB-alan-medium.onnx
+$RUFLO_PATH_LINE
+$RUFLO_HOME_LINE
 ExecStart=$INSTALL_DIR/venv/bin/python $INSTALL_DIR/server.py
 Restart=on-failure
 RestartSec=2
@@ -127,4 +168,8 @@ echo "Styles:    $(curl -s http://localhost:5500/styles || echo '(no response)')
 if [ "$DO_COCKPIT" = "1" ]; then
     echo "Stats sample:"
     curl -s http://localhost:5500/system-stats | python3 -m json.tool 2>/dev/null | head -20 || echo "(stats endpoint not responding yet)"
+fi
+if [ "$DO_RUFLO" = "1" ]; then
+    echo "Ruflo health:"
+    curl -s http://localhost:5500/ruflo/health | python3 -m json.tool 2>/dev/null || echo "(ruflo endpoint not responding yet)"
 fi

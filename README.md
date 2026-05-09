@@ -1,8 +1,8 @@
 # JARVIS — local
 
 Tauri + Vanilla TS desktop app for the Jarvis persona. Tabbed UI (chat,
-workspace, brain) with voice I/O, gesture recognition, and a cockpit HUD
-fed from a local Python stats server.
+workspace, agents, brain) with voice I/O, gesture recognition, and a cockpit
+HUD fed from a local Python stats server.
 
 The chat tab can talk to two backends:
 
@@ -45,6 +45,7 @@ src/                      # Webview app (Vanilla TS, Vite-bundled)
 ├── chat/                 # send loop, model picker, research mode
 ├── voice/                # TTS (Piper + Web Speech), STT, incoming-call UI
 ├── workspace/            # file tree + CodeMirror editor
+├── agents/               # ruflo runner — Tauri-side bridge to WSL agent runs
 ├── brain/                # vault search + SVG visualization
 ├── gestures/             # MediaPipe hand-gesture controls
 ├── cockpit/              # HUD bar + system-stats poller
@@ -56,9 +57,10 @@ src/                      # Webview app (Vanilla TS, Vite-bundled)
 src-tauri/                # Tauri Rust shell (window, commands, menus)
 
 server/                   # Python source-of-truth for the WSL TTS server
-├── server.py             # HTTP server (port 5500) — Piper TTS + stats
+├── server.py             # HTTP server (port 5500) — Piper TTS + stats + ruflo
 ├── synthesis.py          # Piper voice + sox post-effects (alan/orc/narrator)
-└── system_stats.py       # CPU/RAM/GPU stats from psutil + nvidia-smi
+├── system_stats.py       # CPU/RAM/GPU stats from psutil + nvidia-smi
+└── ruflo_runner.py       # subprocess manager for `npx ruflo@latest` jobs
 
 scripts/                  # one-off setup + launcher helpers
 ├── ollama-fix.sh         # systemd override: dual-stack listen + open CORS
@@ -89,14 +91,46 @@ running inside WSL on port 5500. To install it:
 
 ```bash
 # from a WSL Ubuntu shell, in this repo
-bash scripts/jarvis-server.sh             # installs piper + sox + psutil (everything)
+bash scripts/jarvis-server.sh             # installs piper + sox + psutil + ruflo (everything)
 bash scripts/jarvis-server.sh --piper     # just TTS, no styles or stats
 bash scripts/jarvis-server.sh --cockpit   # just the system-stats endpoint
+bash scripts/jarvis-server.sh --ruflo     # just the ruflo runner (needs node + npx)
 ```
 
 Flags compose: `--piper --cockpit` skips the sox effects but keeps stats.
 The script is idempotent — re-run any time. It copies `server/*.py` into
-`~/jarvis-tts/` and registers a `jarvis-tts.service` systemd unit.
+`~/jarvis-tts/` and registers a `jarvis-tts.service` systemd unit. When
+`--ruflo` is set the unit's `PATH` is rewritten to include the directory
+containing `node`/`npx`, and `HOME` is preserved so npx finds its cache.
+
+## Agents tab (ruflo)
+
+The Agents tab integrates [ruflo](https://github.com/ruvnet/ruflo) — a
+multi-agent orchestration platform — as an in-app runner. The webview ↔ Rust ↔
+WSL bridge mirrors the NVIDIA streaming path:
+
+- Webview invokes `ruflo_run(argv, eventName)` on the Rust side.
+- Rust POSTs `/ruflo/run` to the WSL server, then opens the SSE stream at
+  `/ruflo/stream/<job_id>` and re-emits each frame as a Tauri event.
+- WSL spawns `npx -y ruflo@latest <argv>` with `start_new_session=True` so
+  cancel can SIGTERM the whole tree (npx → node → ruflo workers).
+
+The webview never sees a raw shell — it only ever sends a `string[]` of
+ruflo subcommand arguments. The `npx -y ruflo@latest` prefix is added
+server-side and cannot be overridden.
+
+Setup (after the WSL bridge is installed via `--ruflo`):
+1. Open the Agents tab. The status pill shows `bridge online` once
+   `/ruflo/health` confirms `npx` is on the systemd unit's `PATH`.
+2. Pick a preset (Probe version, Init wizard, MCP start, …) or type your
+   own argv. Whitespace splits tokens; `'…'` and `"…"` quote.
+3. **Run** streams stdout (white) and stderr (amber) into the console.
+   **Cancel** sends SIGTERM to the process group; the bridge escalates to
+   SIGKILL after a 5 s grace period.
+
+If the status pill says `bridge up · npx missing`, install Node ≥18 inside
+WSL (nvm is the easiest path) and re-run `bash scripts/jarvis-server.sh --ruflo`
+so the systemd unit picks up the new bin directory.
 
 Override the install dir with `JARVIS_HOME=/somewhere/else bash scripts/...`.
 
