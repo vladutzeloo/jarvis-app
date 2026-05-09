@@ -62,14 +62,23 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
             return
-        try:
-            length = int(self.headers.get("Content-Length", 0))
-        except (TypeError, ValueError):
+        raw_length = self.headers.get("Content-Length")
+        if raw_length is None:
             self.send_response(411)
             self.end_headers()
             return
-        if length <= 0 or length > MAX_BODY_BYTES:
+        try:
+            length = int(raw_length)
+        except ValueError:
+            self.send_response(400)
+            self.end_headers()
+            return
+        if length > MAX_BODY_BYTES:
             self.send_response(413)
+            self.end_headers()
+            return
+        if length <= 0:
+            self.send_response(400)
             self.end_headers()
             return
         try:
