@@ -1,7 +1,9 @@
 import type { Api, RufloJob, VintedBot } from "../api.ts";
+import { escapeHtml } from "../escape.ts";
 
 interface Handlers {
   onAttach: (jobId: string, label: string) => void;
+  onJobs?: (jobs: RufloJob[]) => void;
 }
 
 function fmtArgv(argv: string[]): string {
@@ -13,10 +15,12 @@ function renderJobs(jobs: RufloJob[]): string {
   return jobs
     .map((j) => {
       const dot = j.running ? "live" : "idle";
-      const label = fmtArgv(j.argv);
-      const meta = j.running ? "running" : `exit ${j.exit_code ?? "?"}`;
+      const label = escapeHtml(fmtArgv(j.argv));
+      const meta = j.running
+        ? "running"
+        : `exit ${escapeHtml(j.exit_code ?? "?")}`;
       const attach = j.running
-        ? `<button class="entity-attach" data-attach="${j.id}">attach</button>`
+        ? `<button class="entity-attach" data-attach="${escapeHtml(j.id)}">attach</button>`
         : "";
       return `
         <div class="entity">
@@ -33,11 +37,15 @@ function renderBots(bots: VintedBot[]): string {
   if (!bots.length) return `<div class="muted">no vinted bots</div>`;
   return bots
     .map((b) => {
-      const tail = [b.category, b.query].filter(Boolean).join(" · ");
+      const name = escapeHtml(b.name);
+      const tail = [b.category, b.query]
+        .filter(Boolean)
+        .map(escapeHtml)
+        .join(" · ");
       return `
         <div class="entity">
           <span class="entity-dot idle"></span>
-          <span class="entity-name" title="${b.name}">${b.name}</span>
+          <span class="entity-name" title="${name}">${name}</span>
           <span class="entity-meta">${tail || "—"}</span>
         </div>`;
     })
@@ -58,24 +66,41 @@ export function mountJobs(api: Api, getPollMs: () => number, handlers: Handlers)
   });
 
   async function tick() {
+    if (timer != null) {
+      window.clearTimeout(timer);
+      timer = undefined;
+    }
     aborter?.abort();
-    aborter = new AbortController();
+    const local = new AbortController();
+    aborter = local;
     try {
       const [jobs, bots] = await Promise.all([
-        api.rufloJobs(aborter.signal).catch(() => [] as RufloJob[]),
-        api.vintedBots(aborter.signal).catch(() => [] as VintedBot[]),
+        api.rufloJobs(local.signal).catch((e) => {
+          if (local.signal.aborted) throw e;
+          return [] as RufloJob[];
+        }),
+        api.vintedBots(local.signal).catch((e) => {
+          if (local.signal.aborted) throw e;
+          return [] as VintedBot[];
+        }),
       ]);
+      if (local.signal.aborted) return;
       root.innerHTML = `
         <div class="section-label">ruflo jobs</div>
         ${renderJobs(jobs)}
         <div class="section-label">vinted bots</div>
         ${renderBots(bots)}
       `;
+      handlers.onJobs?.(jobs);
     } catch (e: unknown) {
+      if (local.signal.aborted) return;
       if ((e as { name?: string }).name === "AbortError") return;
       root.innerHTML = `<div class="muted">jobs unavailable</div>`;
     } finally {
-      timer = window.setTimeout(tick, getPollMs());
+      // Only the most recent tick should reschedule.
+      if (!local.signal.aborted) {
+        timer = window.setTimeout(tick, getPollMs());
+      }
     }
   }
 

@@ -13,6 +13,10 @@ export function mountTopbar(api: Api, getPollMs: () => number) {
   let timer: number | undefined;
 
   async function tick() {
+    if (timer != null) {
+      window.clearTimeout(timer);
+      timer = undefined;
+    }
     try {
       const r = await api.health();
       setPill(server, r.trim() === "ok" ? "ok" : "warn", `server ${r.trim()}`);

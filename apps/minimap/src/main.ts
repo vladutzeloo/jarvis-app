@@ -25,23 +25,16 @@ const seenJobs = new Set<string>();
 
 const jobs = mountJobs(api, () => settings.get().pollMs, {
   onAttach: (id, label) => log.attach(id, label),
-});
-
-// Auto-attach to new running jobs when followLogs is on.
-const pollerForAuto = window.setInterval(async () => {
-  if (!settings.get().followLogs) return;
-  try {
-    const list = await api.rufloJobs();
+  onJobs: (list) => {
+    if (!settings.get().followLogs) return;
     for (const job of list) {
       if (job.running && !seenJobs.has(job.id)) {
         seenJobs.add(job.id);
         log.attach(job.id, `ruflo:${job.id.slice(0, 6)}`);
       }
     }
-  } catch {
-    // server probably down — handled by other panels
-  }
-}, Math.max(2000, initial.pollMs));
+  },
+});
 
 const system = mountSystem(api, () => settings.get().pollMs);
 const topbar = mountTopbar(api, () => settings.get().pollMs);
@@ -50,7 +43,6 @@ mountChat(api, () => settings.get());
 
 window.addEventListener("beforeunload", () => {
   log.detachAll();
-  window.clearInterval(pollerForAuto);
   system.stop();
   jobs.stop();
   topbar.stop();

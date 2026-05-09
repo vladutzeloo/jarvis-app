@@ -1,4 +1,5 @@
 import type { Api } from "../api.ts";
+import { escapeHtml } from "../escape.ts";
 
 const MAX_LINES = 500;
 
@@ -17,13 +18,6 @@ interface Stream {
 function ts(): string {
   const d = new Date();
   return d.toTimeString().slice(0, 8);
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
 }
 
 export function mountLog(api: Api): LogPanel {
