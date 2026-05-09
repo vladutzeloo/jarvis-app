@@ -1,0 +1,73 @@
+/* JARVIS — design tokens, resets, and the highlight.js theme. */
+
+@import url('https://cdn.jsdelivr.net/npm/highlight.js@11.10.0/styles/atom-one-dark.css');
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --bg: #06090f;
+  --bg-elev: rgba(22, 27, 34, 0.78);
+  --bg-elev2: rgba(31, 38, 48, 0.88);
+  --bg-solid: #0d1117;
+
+  /* Foreground */
+  --fg: #e6edf3;
+  --fg-muted: #8b949e;
+  --fg-dim: #5c6675;
+
+  /* Accent — cyan-blue, JARVIS HUD vibe */
+  --accent: #5cd9ff;
+  --accent-strong: #00b8e6;
+  --accent-glow: rgba(92, 217, 255, 0.28);
+  --accent-soft: rgba(92, 217, 255, 0.12);
+
+  /* Status */
+  --success: #3fb950;
+  --warning: #d29922;
+  --error: #f85149;
+  --user-bg: rgba(56, 139, 253, 0.12);
+  --user-border: rgba(56, 139, 253, 0.4);
+
+  /* Borders & lines */
+  --border: rgba(125, 142, 168, 0.22);
+  --border-strong: rgba(125, 142, 168, 0.4);
+
+  /* Type */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Mono', 'Fira Code', 'Consolas', monospace;
+
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100vh;
+  overflow: hidden;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(125, 142, 168, 0.18);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(125, 142, 168, 0.32);
+  background-clip: padding-box;
+}
+
+.hidden { display: none !important; }

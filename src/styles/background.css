@@ -1,0 +1,122 @@
+/* Animated circuit-board background — driven from JS via CSS variables that
+   reflect real GPU load (--bg-bright, --bg-sat, --bg-throb, --bg-node-dur,
+   --fan-N-dur). The throb intensifies under load; the fans actually spin. */
+
+.bg-circuit {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(1400px 800px at 10% -10%, rgba(56, 139, 253, 0.08), transparent 60%),
+    radial-gradient(1100px 700px at 110% 110%, rgba(92, 217, 255, 0.06), transparent 60%);
+}
+
+.bg-circuit svg {
+  position: absolute;
+  inset: -2%;
+  width: 104%;
+  height: 104%;
+  animation: bg-drift 60s ease-in-out infinite alternate;
+  filter:
+    brightness(var(--bg-bright, 1))
+    saturate(var(--bg-sat, 1));
+  transition: filter 0.6s ease;
+}
+
+.bg-circuit::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(92, 217, 255, var(--bg-throb, 0.04)), transparent 70%);
+  pointer-events: none;
+  transition: background 0.6s ease;
+}
+
+@keyframes bg-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(-1.5%, -1%, 0) scale(1.02); }
+  100% { transform: translate3d(1%, -0.5%, 0) scale(1.01); }
+}
+
+.bg-circuit .node-layer circle {
+  fill: rgba(92, 217, 255, 0.55);
+  filter: drop-shadow(0 0 4px rgba(92, 217, 255, 0.7));
+  animation: node-pulse var(--bg-node-dur, 4s) ease-in-out infinite;
+}
+.bg-circuit .node-layer circle:nth-child(2n)  { animation-delay: -1.2s; }
+.bg-circuit .node-layer circle:nth-child(3n)  { animation-delay: -2.4s; }
+.bg-circuit .node-layer circle:nth-child(5n)  { animation-delay: -0.8s; }
+
+@keyframes node-pulse {
+  0%, 100% { opacity: 0.4; r: 2.5; }
+  50%      { opacity: 1;   r: 4; }
+}
+
+.bg-circuit .pulse-layer circle {
+  filter: drop-shadow(0 0 6px rgba(92, 217, 255, 0.9));
+}
+
+.bg-circuit .reticle-tl,
+.bg-circuit .reticle-br {
+  transform-origin: center;
+  animation: reticle-spin 40s linear infinite;
+}
+.bg-circuit .reticle-br { animation-direction: reverse; animation-duration: 55s; }
+
+@keyframes reticle-spin {
+  to { transform-origin: center; }
+}
+
+.bg-circuit .reticle-tl > circle:first-child,
+.bg-circuit .reticle-br > circle:first-child {
+  animation: reticle-rotate 30s linear infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.bg-circuit .reticle-br > circle:first-child { animation-duration: 45s; animation-direction: reverse; }
+
+@keyframes reticle-rotate {
+  to { transform: rotate(360deg); }
+}
+
+.bg-circuit .fan-blades {
+  fill: rgba(92, 217, 255, 0.16);
+  stroke: rgba(92, 217, 255, 0.42);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+  transform-origin: 0 0;
+  filter: drop-shadow(0 0 4px rgba(92, 217, 255, 0.35));
+}
+
+.bg-circuit .fan-1 .fan-blades { animation: fan-spin var(--fan-1-dur, 8s) linear infinite; }
+.bg-circuit .fan-2 .fan-blades { animation: fan-spin var(--fan-2-dur, 12s) linear infinite reverse; }
+.bg-circuit .fan-3 .fan-blades { animation: fan-spin var(--fan-3-dur, 6s) linear infinite; }
+.bg-circuit .fan-blades { transition: animation-duration 0.4s ease; }
+
+@keyframes fan-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.bg-circuit .fan > circle:nth-last-child(2) {
+  animation: fan-hub 3s ease-in-out infinite;
+}
+
+@keyframes fan-hub {
+  0%, 100% { opacity: 0.8; }
+  50%      { opacity: 1; }
+}
+
+/* Ensure UI sits above the background. */
+header,
+.cockpit,
+.view,
+.toolbar,
+.chat,
+.chat-footer,
+.brain-pane,
+.placeholder,
+.settings-drawer,
+.camera-panel { position: relative; z-index: 1; }

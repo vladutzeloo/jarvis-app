@@ -1,0 +1,154 @@
+/* Workspace tab — file tree + CodeMirror editor pane. */
+
+.view[data-view="workspace"] { background: rgba(13, 17, 23, 0.4); }
+
+.ws-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(13, 17, 23, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  flex-shrink: 0;
+}
+
+.ws-folder-path {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-muted);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 360px;
+}
+
+.ws-file-info {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+
+.ws-dirty {
+  color: var(--warning);
+  font-size: 14px;
+  text-shadow: 0 0 6px rgba(210, 153, 34, 0.6);
+  animation: dirty-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes dirty-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
+.ws-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.ws-tree {
+  width: 260px;
+  background: rgba(13, 17, 23, 0.45);
+  border-right: 1px solid var(--border);
+  overflow: auto;
+  padding: 8px 0;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.ws-tree-empty,
+.ws-tree-empty-node {
+  padding: 14px 16px;
+  font-size: 12px;
+  color: var(--fg-dim);
+  font-style: italic;
+}
+
+.ws-tree-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.ws-tree-list .ws-tree-list {
+  padding-left: 14px;
+  border-left: 1px dashed rgba(125, 142, 168, 0.18);
+  margin-left: 12px;
+}
+
+.ws-tree-item { padding: 0; }
+
+.ws-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  margin: 1px 6px;
+  transition: background 0.1s ease, color 0.1s ease;
+  user-select: none;
+}
+
+.ws-tree-row:hover { background: rgba(92, 217, 255, 0.06); }
+
+.ws-tree-row.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(92, 217, 255, 0.25);
+}
+
+.ws-tree-icon {
+  font-family: var(--font-mono);
+  width: 18px;
+  text-align: center;
+  color: var(--fg-muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.ws-tree-row.active .ws-tree-icon { color: var(--accent); }
+.ws-tree-row.ws-tree-dir .ws-tree-icon { color: var(--accent); }
+
+.ws-tree-label {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ws-tree-row.ws-tree-dir .ws-tree-label { font-weight: 500; }
+
+.ws-editor {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-solid);
+  position: relative;
+}
+
+.ws-editor-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-dim);
+  font-style: italic;
+  font-size: 14px;
+}
+
+.ws-editor .cm-editor {
+  height: 100%;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.ws-editor .cm-scroller { font-family: inherit; }
