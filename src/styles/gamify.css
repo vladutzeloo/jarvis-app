@@ -489,7 +489,7 @@ header { padding: 8px 18px; gap: 14px; }
 .hub-tile-art {
   flex: 1;
   position: relative;
-  min-height: 96px;
+  min-height: 130px;
   background:
     linear-gradient(rgba(92, 217, 255, 0.05) 1px, transparent 1px) 0 0 / 14px 14px,
     linear-gradient(90deg, rgba(92, 217, 255, 0.05) 1px, transparent 1px) 0 0 / 14px 14px,
@@ -500,14 +500,21 @@ header { padding: 8px 18px; gap: 14px; }
 }
 
 .hub-tile-art svg {
-  width: 64px;
-  height: 64px;
-  filter: drop-shadow(0 0 10px var(--accent-glow));
+  filter: drop-shadow(0 0 8px var(--accent-glow));
   image-rendering: pixelated;
 }
 
+/* New animated scenes fill the whole art panel. */
+.hub-tile-art .scene {
+  width: 100%;
+  height: 100%;
+  display: block;
+  min-height: 130px;
+  color: var(--tile-accent, var(--accent));
+}
+
 .hub-tile:hover .hub-tile-art svg {
-  filter: drop-shadow(0 0 14px var(--accent)) drop-shadow(0 0 22px var(--neon-magenta-glow));
+  filter: drop-shadow(0 0 12px var(--accent)) drop-shadow(0 0 18px var(--neon-magenta-glow));
 }
 
 .hub-tile-art::after {
@@ -715,6 +722,285 @@ header { padding: 8px 18px; gap: 14px; }
   box-shadow: 0 0 6px rgba(248, 81, 73, 0.7);
   opacity: 1;
   animation: alarm-flicker 1.2s ease-in-out infinite;
+}
+
+/* ─── Workshop scenes — top-down rooms with walking NPCs ────────────────── */
+
+.scene .floor { /* set in markup */ }
+.scene .wall  { fill: currentColor; opacity: 0.45; }
+
+/* Furniture + screens — tinted by tile-accent via currentColor */
+.scene .furn          { fill: rgba(255, 255, 255, 0.08); stroke: currentColor; stroke-width: 0.4; opacity: 0.85; }
+.scene .desk          { fill: rgba(255, 255, 255, 0.06); stroke: currentColor; stroke-width: 0.4; }
+.scene .screen        { fill: rgba(8, 12, 20, 0.8);     stroke: currentColor; stroke-width: 0.4; }
+.scene .screen-glow   { fill: currentColor; opacity: 0.18; }
+.scene .console       { fill: rgba(255, 255, 255, 0.05); stroke: currentColor; stroke-width: 0.5; }
+.scene .console-screen{ fill: rgba(8, 12, 20, 0.85);    stroke: currentColor; stroke-width: 0.4; }
+.scene .cabinet       { fill: rgba(255, 255, 255, 0.04); stroke: currentColor; stroke-width: 0.4; opacity: 0.7; }
+.scene .cabinet-line  { fill: currentColor; opacity: 0.35; }
+.scene .awning        { fill: currentColor; opacity: 0.35; }
+.scene .stall-post    { fill: currentColor; opacity: 0.55; }
+.scene .item          { fill: currentColor; opacity: 0.55; }
+.scene .shelf         { fill: rgba(255, 255, 255, 0.06); stroke: currentColor; stroke-width: 0.4; }
+.scene .shelf-line    { fill: currentColor; opacity: 0.4; }
+
+/* Per-tile screen lines and other "fx" — blink in/out */
+.scene .fx { fill: currentColor; }
+.scene .blink-a { animation: scene-blink-a 2.4s steps(2, end) infinite; }
+.scene .blink-b { animation: scene-blink-b 3.1s steps(2, end) infinite; }
+
+@keyframes scene-blink-a {
+  0%, 60%  { opacity: 0.85; }
+  60.01%, 100% { opacity: 0.35; }
+}
+@keyframes scene-blink-b {
+  0%, 50%  { opacity: 0.7; }
+  50.01%, 100% { opacity: 0.25; }
+}
+
+/* Vinted floating coin sparkles */
+.scene .coin {
+  fill: var(--neon-amber);
+  filter: drop-shadow(0 0 3px rgba(255, 178, 64, 0.7));
+}
+.scene .coin-1 { animation: coin-bob 2.2s ease-in-out infinite; }
+.scene .coin-2 { animation: coin-bob 2.6s ease-in-out infinite -1s; }
+.scene .coin-3 { animation: coin-bob 1.9s ease-in-out infinite -0.5s; }
+
+@keyframes coin-bob {
+  0%, 100% { transform: translateY(0); opacity: 0.8; }
+  50%      { transform: translateY(-2px); opacity: 1; }
+}
+
+/* Brain "active shelf" — only visible while pulsing */
+.scene .active-shelf {
+  fill: var(--neon-violet);
+  opacity: 0;
+  filter: drop-shadow(0 0 4px rgba(180, 107, 255, 0.7));
+}
+.hub-tile.pulse .scene-brain .active-shelf {
+  animation: shelf-flash 0.8s ease-out;
+}
+@keyframes shelf-flash {
+  0%   { opacity: 0; }
+  20%  { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+
+/* ─── NPCs ──────────────────────────────────────────────────────────────── */
+
+.scene .npc { transform-box: fill-box; }
+
+.scene .npc-body {
+  fill: currentColor;
+  filter: drop-shadow(0 0 3px color-mix(in srgb, currentColor 50%, transparent));
+}
+.scene .npc-head { fill: rgba(255, 255, 255, 0.85); }
+
+/* Default opacity per NPC slot — tile state will reveal more of them */
+.scene .npc-1 { opacity: 0.85; }
+.scene .npc-2 { opacity: 0.55; }
+.scene .npc-3 { opacity: 0; }
+.scene .npc-4 { opacity: 0; }
+
+.hub-tile[data-state="working"] .scene .npc-2 { opacity: 0.95; }
+.hub-tile[data-state="working"] .scene .npc-3 { opacity: 0.7; }
+.hub-tile[data-state="busy"]    .scene .npc-2,
+.hub-tile[data-state="busy"]    .scene .npc-3,
+.hub-tile[data-state="busy"]    .scene .npc-4 { opacity: 1; }
+
+/* Walk speed — durations multiplied by --scene-speed (default 1) */
+.scene .npc {
+  --scene-speed: 1;
+  animation-duration: calc(14s * var(--scene-speed));
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.hub-tile[data-state="working"] .scene .npc { --scene-speed: 0.65; }
+.hub-tile[data-state="busy"]    .scene .npc { --scene-speed: 0.35; }
+
+/* Single-event pulse: brief floor flash + NPC-body glow */
+.hub-tile.pulse .scene .floor {
+  animation: scene-floor-pulse 0.8s ease-out;
+}
+.hub-tile.pulse .scene .npc-body {
+  animation: scene-npc-pulse 0.8s ease-out;
+}
+
+@keyframes scene-floor-pulse {
+  0%   { filter: brightness(1.6) saturate(1.3); }
+  100% { filter: brightness(1) saturate(1); }
+}
+@keyframes scene-npc-pulse {
+  0%   { filter: drop-shadow(0 0 8px currentColor) brightness(1.6); }
+  100% { filter: drop-shadow(0 0 3px color-mix(in srgb, currentColor 50%, transparent)) brightness(1); }
+}
+
+/* ─── Per-room walk paths ──────────────────────────────────────────────── */
+
+/* All keyframe coordinates are in SVG user units (viewBox 0..120 x 0..72).
+   The walks are short loops chosen so NPCs visit furniture they "use". */
+
+/* Chat — pace between the 4 monitors at the top */
+.scene-chat .npc-1 { animation-name: chat-walk-1; }
+.scene-chat .npc-2 { animation-name: chat-walk-2; animation-delay: -3s; }
+.scene-chat .npc-3 { animation-name: chat-walk-3; animation-delay: -6s; }
+.scene-chat .npc-4 { animation-name: chat-walk-4; animation-delay: -9s; }
+
+@keyframes chat-walk-1 {
+  0%   { transform: translate(20px, 36px); }
+  25%  { transform: translate(50px, 36px); }
+  50%  { transform: translate(80px, 36px); }
+  75%  { transform: translate(50px, 50px); }
+  100% { transform: translate(20px, 36px); }
+}
+@keyframes chat-walk-2 {
+  0%   { transform: translate(96px, 50px); }
+  25%  { transform: translate(96px, 36px); }
+  50%  { transform: translate(60px, 50px); }
+  75%  { transform: translate(96px, 60px); }
+  100% { transform: translate(96px, 50px); }
+}
+@keyframes chat-walk-3 {
+  0%   { transform: translate(40px, 60px); }
+  50%  { transform: translate(80px, 60px); }
+  100% { transform: translate(40px, 60px); }
+}
+@keyframes chat-walk-4 {
+  0%   { transform: translate(70px, 36px); }
+  50%  { transform: translate(30px, 50px); }
+  100% { transform: translate(70px, 36px); }
+}
+
+/* Workspace — one main desk, two side cabinets */
+.scene-workspace .npc-1 { animation-name: ws-walk-1; }
+.scene-workspace .npc-2 { animation-name: ws-walk-2; animation-delay: -4s; }
+.scene-workspace .npc-3 { animation-name: ws-walk-3; animation-delay: -7s; }
+.scene-workspace .npc-4 { animation-name: ws-walk-4; animation-delay: -2s; }
+
+@keyframes ws-walk-1 {
+  0%   { transform: translate(60px, 50px); }
+  50%  { transform: translate(60px, 38px); }
+  100% { transform: translate(60px, 50px); }
+}
+@keyframes ws-walk-2 {
+  0%   { transform: translate(20px, 56px); }
+  25%  { transform: translate(50px, 56px); }
+  50%  { transform: translate(50px, 38px); }
+  75%  { transform: translate(20px, 56px); }
+  100% { transform: translate(20px, 56px); }
+}
+@keyframes ws-walk-3 {
+  0%   { transform: translate(100px, 56px); }
+  50%  { transform: translate(72px, 56px); }
+  100% { transform: translate(100px, 56px); }
+}
+@keyframes ws-walk-4 {
+  0%   { transform: translate(40px, 56px); }
+  50%  { transform: translate(86px, 38px); }
+  100% { transform: translate(40px, 56px); }
+}
+
+/* Agents — pace around the central console + 4 satellite stations */
+.scene-agents .npc-1 { animation-name: ag-walk-1; }
+.scene-agents .npc-2 { animation-name: ag-walk-2; animation-delay: -3s; }
+.scene-agents .npc-3 { animation-name: ag-walk-3; animation-delay: -5s; }
+.scene-agents .npc-4 { animation-name: ag-walk-4; animation-delay: -7s; }
+
+@keyframes ag-walk-1 {
+  0%   { transform: translate(60px, 24px); }
+  25%  { transform: translate(80px, 38px); }
+  50%  { transform: translate(60px, 52px); }
+  75%  { transform: translate(40px, 38px); }
+  100% { transform: translate(60px, 24px); }
+}
+@keyframes ag-walk-2 {
+  0%   { transform: translate(20px, 28px); }
+  50%  { transform: translate(60px, 38px); }
+  100% { transform: translate(20px, 28px); }
+}
+@keyframes ag-walk-3 {
+  0%   { transform: translate(100px, 60px); }
+  50%  { transform: translate(60px, 38px); }
+  100% { transform: translate(100px, 60px); }
+}
+@keyframes ag-walk-4 {
+  0%   { transform: translate(20px, 60px); }
+  50%  { transform: translate(100px, 28px); }
+  100% { transform: translate(20px, 60px); }
+}
+
+/* Vinted — shoppers walking the stall row */
+.scene-vinted .npc-1 { animation-name: vn-walk-1; }
+.scene-vinted .npc-2 { animation-name: vn-walk-2; animation-delay: -4s; }
+.scene-vinted .npc-3 { animation-name: vn-walk-3; animation-delay: -7s; }
+.scene-vinted .npc-4 { animation-name: vn-walk-4; animation-delay: -2s; }
+
+@keyframes vn-walk-1 {
+  0%   { transform: translate(10px, 50px); }
+  50%  { transform: translate(110px, 50px); }
+  100% { transform: translate(10px, 50px); }
+}
+@keyframes vn-walk-2 {
+  0%   { transform: translate(110px, 60px); }
+  50%  { transform: translate(10px, 60px); }
+  100% { transform: translate(110px, 60px); }
+}
+@keyframes vn-walk-3 {
+  0%   { transform: translate(40px, 32px); }
+  50%  { transform: translate(80px, 32px); }
+  100% { transform: translate(40px, 32px); }
+}
+@keyframes vn-walk-4 {
+  0%   { transform: translate(60px, 60px); }
+  25%  { transform: translate(100px, 50px); }
+  50%  { transform: translate(60px, 32px); }
+  75%  { transform: translate(20px, 50px); }
+  100% { transform: translate(60px, 60px); }
+}
+
+/* Brain — patrons walking the library aisles between shelves */
+.scene-brain .npc-1 { animation-name: br-walk-1; }
+.scene-brain .npc-2 { animation-name: br-walk-2; animation-delay: -3s; }
+.scene-brain .npc-3 { animation-name: br-walk-3; animation-delay: -5s; }
+.scene-brain .npc-4 { animation-name: br-walk-4; animation-delay: -8s; }
+
+@keyframes br-walk-1 {
+  0%   { transform: translate(20px, 14px); }
+  25%  { transform: translate(20px, 60px); }
+  50%  { transform: translate(36px, 60px); }
+  75%  { transform: translate(36px, 14px); }
+  100% { transform: translate(20px, 14px); }
+}
+@keyframes br-walk-2 {
+  0%   { transform: translate(52px, 60px); }
+  25%  { transform: translate(52px, 14px); }
+  50%  { transform: translate(68px, 14px); }
+  75%  { transform: translate(68px, 60px); }
+  100% { transform: translate(52px, 60px); }
+}
+@keyframes br-walk-3 {
+  0%   { transform: translate(84px, 14px); }
+  50%  { transform: translate(84px, 60px); }
+  100% { transform: translate(84px, 14px); }
+}
+@keyframes br-walk-4 {
+  0%   { transform: translate(100px, 60px); }
+  50%  { transform: translate(100px, 14px); }
+  100% { transform: translate(100px, 60px); }
+}
+
+/* Reduced-motion respect: freeze NPCs but keep state colors */
+@media (prefers-reduced-motion: reduce) {
+  .scene .npc,
+  .scene .blink-a,
+  .scene .blink-b,
+  .scene .coin-1,
+  .scene .coin-2,
+  .scene .coin-3 {
+    animation: none !important;
+  }
 }
 
 /* ─── Make small responsive ─────────────────────────────────────────────── */
