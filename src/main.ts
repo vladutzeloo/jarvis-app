@@ -18,6 +18,7 @@ import "./chat/chat";
 import "./voice/stt";
 import "./workspace/workspace";
 import "./agents/agents";
+import "./vinted/vinted";
 import "./gestures/gestures";
 
 import { ensureModelsLoaded } from "./chat/models";

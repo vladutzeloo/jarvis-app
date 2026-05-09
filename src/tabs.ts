@@ -6,6 +6,7 @@ const views = document.querySelectorAll<HTMLElement>(".view");
 const input = document.getElementById("input") as HTMLTextAreaElement;
 const brainSearch = document.getElementById("brain-search") as HTMLInputElement;
 const agentsArgv = document.getElementById("agents-argv") as HTMLTextAreaElement | null;
+const vintedNew = document.getElementById("vinted-new") as HTMLButtonElement | null;
 
 tabs.forEach(tab => {
   tab.addEventListener("click", () => {
@@ -15,5 +16,6 @@ tabs.forEach(tab => {
     if (target === "chat") input.focus();
     if (target === "brain") brainSearch.focus();
     if (target === "agents") agentsArgv?.focus();
+    if (target === "vinted") vintedNew?.focus();
   });
 });

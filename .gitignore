@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Python bytecode cache (server/ is run as a Python module under WSL)
+__pycache__/
+*.pyc
+
 # Local secrets — never commit. Template lives at .env.example
 .env
 .env.local
