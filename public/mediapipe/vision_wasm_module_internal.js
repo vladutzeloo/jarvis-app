@@ -551,22 +551,24 @@ var Browser = {
     };
     audioPlugin["handle"] = async (byteArray, name) => new Promise((resolve, reject) => {
       var done = false;
+      var url = null;
       function finish(audio) {
         if (done) return;
         done = true;
         Browser.preloadedAudios[name] = audio;
+        if (url) URL.revokeObjectURL(url);
         resolve(byteArray);
       }
       var b = new Blob([ byteArray ], {
         type: Browser.getMimetype(name)
       });
-      var url = URL.createObjectURL(b);
-      // XXX we never revoke this!
+      url = URL.createObjectURL(b);
       var audio = new Audio;
       audio.addEventListener("canplaythrough", () => finish(audio), false);
       // use addEventListener due to chromium bug 124926
       audio.onerror = event => {
         if (done) return;
+        if (url) URL.revokeObjectURL(url);
         err(`warning: browser could not fully decode audio ${name}, trying slower base64 approach`);
         function encode64(data) {
           var BASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
