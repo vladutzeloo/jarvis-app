@@ -5,7 +5,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Size + speed for release inference.
-add_compile_options(-O3 -ffast-math -fvisibility=hidden -fvisibility-inlines-hidden)
+# Note: -ffast-math includes -ffinite-math-only which breaks ggml's non-finite checks,
+# so we add -fno-finite-math-only to restore support for NaN/Inf handling.
+add_compile_options(-O3 -ffast-math -fno-finite-math-only -fvisibility=hidden -fvisibility-inlines-hidden)
 
 # Expects llama.cpp checked out as a sibling under cpp/llama.cpp.
 # See README — `git submodule update --init --recursive` from project root.
