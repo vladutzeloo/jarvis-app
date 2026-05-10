@@ -24,6 +24,7 @@ endif()
 set(LLAMA_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
 set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(LLAMA_BUILD_SERVER   OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_COMMON   ON CACHE BOOL "" FORCE)
 set(LLAMA_CURL           OFF CACHE BOOL "" FORCE)
 set(GGML_OPENMP          OFF CACHE BOOL "" FORCE)
 
@@ -39,7 +40,7 @@ target_include_directories(jarvis_llm PRIVATE
 
 target_link_libraries(jarvis_llm PRIVATE
     llama
-    common
+    llama-common
     log
     android
 )
