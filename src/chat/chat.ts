@@ -180,7 +180,12 @@ export async function send() {
 
         for (const line of lines) {
           if (!line.trim()) continue;
-          let obj: any;
+          let obj: {
+            message?: { content?: string };
+            done?: boolean;
+            eval_count?: number;
+            eval_duration?: number;
+          };
           try { obj = JSON.parse(line); } catch { continue; }
 
           const chunk = obj.message?.content || "";

@@ -103,7 +103,11 @@ export async function streamCompletion(opts: OneshotOptions): Promise<OneshotRes
     buffer = lines.pop() || "";
     for (const line of lines) {
       if (!line.trim()) continue;
-      let obj: any;
+      let obj: {
+        message?: { content?: string };
+        done?: boolean;
+        eval_count?: number;
+      };
       try { obj = JSON.parse(line); } catch { continue; }
       const chunk = obj.message?.content || "";
       if (chunk) {
