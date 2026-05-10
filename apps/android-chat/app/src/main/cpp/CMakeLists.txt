@@ -39,7 +39,6 @@ target_include_directories(jarvis_llm PRIVATE
 
 target_link_libraries(jarvis_llm PRIVATE
     llama
-    common
     log
     android
 )
