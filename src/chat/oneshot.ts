@@ -14,6 +14,7 @@ import { OLLAMA_BASE } from "../types";
 import { getSettings, buildOllamaOptions } from "../settings/settings";
 import { selectedBackend, getModelPicker } from "./models";
 import { nvidiaChatStream } from "../backends/nvidia";
+import { streamNdjson } from "./stream";
 
 export interface OneshotOptions {
   systemPrompt: string;
@@ -92,28 +93,15 @@ export async function streamCompletion(opts: OneshotOptions): Promise<OneshotRes
   });
   if (!res.ok || !res.body) throw new Error(`Ollama HTTP ${res.status}`);
 
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      let obj: any;
-      try { obj = JSON.parse(line); } catch { continue; }
-      const chunk = obj.message?.content || "";
-      if (chunk) {
-        text += chunk;
-        tokens++;
-        opts.onDelta(chunk);
-      }
-      if (obj.done && obj.eval_count) {
-        tokens = obj.eval_count;
-      }
+  for await (const obj of streamNdjson(res.body.getReader())) {
+    const chunk = obj.message?.content || "";
+    if (chunk) {
+      text += chunk;
+      tokens++;
+      opts.onDelta(chunk);
+    }
+    if (obj.done && obj.eval_count) {
+      tokens = obj.eval_count;
     }
   }
   return { text, backend, model, tokens, elapsedMs: performance.now() - startedAt };

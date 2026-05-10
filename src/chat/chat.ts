@@ -10,6 +10,7 @@ import { writeMemoryEntry } from "../vault";
 import { addMessage, addSystem, clearChat, escapeHtml, renderMarkdown, getChatElement } from "./messages";
 import { selectedBackend, getModelPicker } from "./models";
 import { getResearchMode, runResearch, buildAugmentedPrompt } from "./research";
+import { streamNdjson } from "./stream";
 import type { ResearchResult } from "../types";
 
 import { speak, cancelSynthOnly } from "../voice/tts";
@@ -166,41 +167,24 @@ export async function send() {
 
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
+      for await (const obj of streamNdjson(res.body.getReader())) {
+        const chunk = obj.message?.content || "";
+        if (chunk) {
+          assistantText += chunk;
+          assistantBody.innerHTML = renderMarkdown(assistantText);
+          tokenCount++;
+          bumpTokens(1);
+          if (tokenCount % 10 === 0) updateTokenCells();
+          const elapsed = (performance.now() - startTime) / 1000;
+          const rate = tokenCount / elapsed;
+          stats.textContent = `${tokenCount} tok • ${rate.toFixed(1)} tok/s • ${elapsed.toFixed(1)}s`;
+        }
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          let obj: any;
-          try { obj = JSON.parse(line); } catch { continue; }
-
-          const chunk = obj.message?.content || "";
-          if (chunk) {
-            assistantText += chunk;
-            assistantBody.innerHTML = renderMarkdown(assistantText);
-            tokenCount++;
-            bumpTokens(1);
-            if (tokenCount % 10 === 0) updateTokenCells();
-            const elapsed = (performance.now() - startTime) / 1000;
-            const rate = tokenCount / elapsed;
-            stats.textContent = `${tokenCount} tok • ${rate.toFixed(1)} tok/s • ${elapsed.toFixed(1)}s`;
-          }
-
-          if (obj.done) {
-            const evalCount = obj.eval_count || tokenCount;
-            const evalDur = (obj.eval_duration || 0) / 1e9;
-            const finalRate = evalDur > 0 ? evalCount / evalDur : 0;
-            stats.textContent = `${evalCount} tok • ${finalRate.toFixed(1)} tok/s • ${evalDur.toFixed(1)}s`;
-          }
+        if (obj.done) {
+          const evalCount = obj.eval_count || tokenCount;
+          const evalDur = (obj.eval_duration || 0) / 1e9;
+          const finalRate = evalDur > 0 ? evalCount / evalDur : 0;
+          stats.textContent = `${evalCount} tok • ${finalRate.toFixed(1)} tok/s • ${evalDur.toFixed(1)}s`;
         }
       }
     }
