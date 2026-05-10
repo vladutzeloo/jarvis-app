@@ -4274,8 +4274,10 @@ var __embind_register_void = (rawType, name) => {
     // void return values can be optimized out sometimes
     name,
     fromWireType: () => undefined,
-    // TODO: assert if anything else is given?
-    toWireType: (destructors, o) => undefined
+    toWireType: (destructors, o) => {
+      assert(o === undefined, "void type expected undefined");
+      return undefined;
+    }
   });
 };
 
