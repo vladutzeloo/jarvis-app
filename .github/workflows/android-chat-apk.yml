@@ -59,11 +59,16 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-        with:
-          packages: "platform-tools platforms;android-35 build-tools;35.0.0 cmake;3.22.1"
 
-      - name: Install NDK 27
-        run: sdkmanager --install "ndk;27.2.12479018"
+      - name: Install SDK packages (platform, build-tools, CMake, NDK)
+        run: |
+          sdkmanager --licenses <<< $'y\ny\ny\ny\ny\ny\ny\n' || true
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "cmake;3.22.1" \
+            "ndk;27.2.12479018"
 
       - name: Gradle cache
         uses: actions/cache@v4
@@ -75,6 +80,15 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('apps/android-chat/**/*.gradle*', 'apps/android-chat/gradle/wrapper/gradle-wrapper.properties', 'apps/android-chat/gradle/libs.versions.toml') }}
           restore-keys: |
             gradle-${{ runner.os }}-
+
+      - name: Native build cache (.cxx)
+        uses: actions/cache@v4
+        with:
+          path: apps/android-chat/app/.cxx
+          key: cxx-${{ runner.os }}-${{ hashFiles('apps/android-chat/app/src/main/cpp/**', 'apps/android-chat/app/build.gradle.kts') }}-${{ github.sha }}
+          restore-keys: |
+            cxx-${{ runner.os }}-${{ hashFiles('apps/android-chat/app/src/main/cpp/**', 'apps/android-chat/app/build.gradle.kts') }}-
+            cxx-${{ runner.os }}-
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
