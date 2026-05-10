@@ -1,0 +1,106 @@
+name: android-chat APK
+
+# Builds the offline chat APK from apps/android-chat/.
+# Triggers:
+#  - Manual dispatch (workflow_dispatch) — easiest way to grab a fresh APK
+#  - Pushes to main / claude-* / android-chat-* that touch the module or this workflow
+#  - Tags vX.Y.Z-android — also publishes a draft GitHub Release with the APK
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - "claude/**"
+      - "android-chat-**"
+    paths:
+      - "apps/android-chat/**"
+      - ".github/workflows/android-chat-apk.yml"
+    tags:
+      - "v*-android"
+
+jobs:
+  build:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    defaults:
+      run:
+        working-directory: apps/android-chat
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          # Don't use submodules: recursive — repo has an unrelated dangling
+          # gitlink at apps/isocity that lacks a .gitmodules entry. Both the
+          # init AND the post-cleanup phase choke on it. We strip it from the
+          # index for the duration of the job, then init our submodule.
+
+      - name: Drop dangling apps/isocity gitlink (workspace-only)
+        working-directory: ${{ github.workspace }}
+        run: |
+          # Stale gitlink; not committed back, lives only for this job.
+          git rm --cached apps/isocity 2>/dev/null || true
+          git config submodule.apps/isocity.active false || true
+
+      - name: Init llama.cpp submodule
+        working-directory: ${{ github.workspace }}
+        run: |
+          git submodule update --init --depth 1 \
+              apps/android-chat/app/src/main/cpp/llama.cpp
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools platforms;android-35 build-tools;35.0.0 cmake;3.22.1"
+
+      - name: Install NDK 27
+        run: sdkmanager --install "ndk;27.2.12479018"
+
+      - name: Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            apps/android-chat/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('apps/android-chat/**/*.gradle*', 'apps/android-chat/gradle/wrapper/gradle-wrapper.properties', 'apps/android-chat/gradle/libs.versions.toml') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Assemble debug APK
+        run: ./gradlew :app:assembleDebug --stacktrace --no-daemon
+
+      - name: Locate APK
+        id: apk
+        run: |
+          APK="$(find app/build/outputs/apk -name '*.apk' | head -n 1)"
+          echo "path=$APK" >> "$GITHUB_OUTPUT"
+          ls -la "$APK"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-localchat-debug
+          path: apps/android-chat/${{ steps.apk.outputs.path }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish draft release (tag builds only)
+        if: startsWith(github.ref, 'refs/tags/v') && endsWith(github.ref, '-android')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          name: ${{ github.ref_name }}
+          files: apps/android-chat/${{ steps.apk.outputs.path }}

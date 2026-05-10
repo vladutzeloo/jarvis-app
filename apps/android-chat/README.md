@@ -52,24 +52,26 @@ apps/android-chat/
 
 ## One-time setup
 
-```bash
-cd apps/android-chat
+llama.cpp is wired in as a git submodule, pinned to tag `b9093`. After cloning:
 
-# Pull llama.cpp into the C++ tree as a submodule.
-git submodule add https://github.com/ggerganov/llama.cpp \
-    app/src/main/cpp/llama.cpp
+```bash
 git submodule update --init --recursive
 ```
 
-Pin a known-good llama.cpp tag if you want reproducible builds:
+To bump the pin later:
 
 ```bash
-cd app/src/main/cpp/llama.cpp && git checkout b4404 && cd -
-git add app/src/main/cpp/llama.cpp && git commit -m "pin llama.cpp"
+cd apps/android-chat/app/src/main/cpp/llama.cpp
+git fetch --tags
+git checkout <new-tag>
+cd -
+git add apps/android-chat/app/src/main/cpp/llama.cpp
+git commit -m "bump llama.cpp to <new-tag>"
 ```
 
-(`b4404` is an example — pick the latest tag that has the
-`llama_model_load_from_file` / `llama_sampler_chain_*` API.)
+Pick a tag that still exposes `llama_model_load_from_file`,
+`llama_sampler_chain_init`, and `llama_memory_clear` / `llama_get_memory`. The
+JNI in `cpp/llama_jni.cpp` uses these.
 
 ## Build
 
