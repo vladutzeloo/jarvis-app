@@ -174,7 +174,7 @@
       </div>
       <main id="chat" class="chat"></main>
       <footer class="chat-footer">
-        <textarea id="input" placeholder="Ask JARVIS - or click the mic..." rows="2" autofocus></textarea>
+        <textarea id="input" aria-label="Chat input" placeholder="Ask JARVIS - or click the mic..." rows="2" autofocus></textarea>
         <button id="mic" title="Dictate (click to start/stop)">Mic</button>
         <button id="send">Send</button>
       </footer>
@@ -363,7 +363,7 @@
           </div>
           <ul class="radio-stations" id="radio-stations"></ul>
           <div class="radio-rail-search">
-            <input id="radio-search-input" type="text" placeholder="search genre / artist..." spellcheck="false" />
+            <input id="radio-search-input" aria-label="Search genre or artist" type="text" placeholder="search genre / artist..." spellcheck="false" />
             <button id="radio-search-btn" class="ghost" title="Search">Go</button>
           </div>
           <div class="radio-rail-tip">
@@ -484,7 +484,7 @@
     <section class="view" data-view="brain">
       <div class="brain-pane">
         <div class="brain-header">
-          <input id="brain-search" placeholder="Search your knowledge base..." />
+          <input id="brain-search" aria-label="Search your knowledge base" placeholder="Search your knowledge base..." />
           <button id="brain-viz-mode" class="ghost" title="Switch to 3D viz">3D</button>
           <button id="brain-settings" class="ghost" title="Configure vault">Settings</button>
         </div>
