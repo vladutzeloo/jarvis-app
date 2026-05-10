@@ -1,0 +1,13 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.cxx/
+.kotlin/
+captures/
+app/release/
+app/src/main/cpp/llama.cpp/build*/
+*.apk
+*.aab
+*.keystore
