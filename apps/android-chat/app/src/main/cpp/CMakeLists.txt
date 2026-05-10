@@ -13,6 +13,14 @@ add_compile_options(-O3 -ffast-math -fno-finite-math-only -fvisibility=hidden -f
 # See README — `git submodule update --init --recursive` from project root.
 set(LLAMA_CPP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp)
 
+# Wrap compiler calls with ccache when available (CI and local).
+# Pre-installed on ubuntu-latest; also works if the developer has it locally.
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    set(CMAKE_C_COMPILER_LAUNCHER   "${CCACHE_PROGRAM}")
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+endif()
+
 if(NOT EXISTS ${LLAMA_CPP_DIR}/CMakeLists.txt)
     message(FATAL_ERROR
         "llama.cpp sources not found at ${LLAMA_CPP_DIR}. "

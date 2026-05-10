@@ -81,19 +81,21 @@ jobs:
           restore-keys: |
             gradle-${{ runner.os }}-
 
-      - name: Native build cache (.cxx)
+      - name: ccache (native object-file cache)
         uses: actions/cache@v4
         with:
-          path: apps/android-chat/app/.cxx
-          key: cxx-${{ runner.os }}-${{ hashFiles('apps/android-chat/app/src/main/cpp/**', 'apps/android-chat/app/build.gradle.kts') }}-${{ github.sha }}
-          restore-keys: |
-            cxx-${{ runner.os }}-${{ hashFiles('apps/android-chat/app/src/main/cpp/**', 'apps/android-chat/app/build.gradle.kts') }}-
-            cxx-${{ runner.os }}-
+          path: ~/.cache/ccache
+          key: ccache-ndk27-arm64-${{ hashFiles('apps/android-chat/app/src/main/cpp/**') }}
+          restore-keys: ccache-ndk27-arm64-
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
       - name: Assemble debug APK
+        env:
+          CCACHE_MAXSIZE: "1500M"
+          CCACHE_COMPRESS: "true"
+          CCACHE_COMPRESSLEVEL: "6"
         run: ./gradlew :app:assembleDebug --stacktrace --no-daemon
 
       - name: Locate APK
