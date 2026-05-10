@@ -3326,10 +3326,10 @@ var FS = {
           }
           xhr.send(null);
           if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) abort("Couldn't load " + url + ". Status: " + xhr.status);
-          if (xhr.response !== undefined) {
-            return new Uint8Array(/** @type{Array<number>} */ (xhr.response || []));
-          } else if (xhr.mozResponseArrayBuffer !== undefined) {
-            return new Uint8Array(/** @type{Array<number>} */ (xhr.mozResponseArrayBuffer || []));
+          if (typeof ArrayBuffer !== 'undefined' && xhr.response instanceof ArrayBuffer) {
+            return new Uint8Array(/** @type{Array<number>} */ (xhr.response));
+          } else if (typeof ArrayBuffer !== 'undefined' && xhr.mozResponseArrayBuffer instanceof ArrayBuffer) {
+            return new Uint8Array(/** @type{Array<number>} */ (xhr.mozResponseArrayBuffer));
           }
           return intArrayFromString(xhr.responseText || "", true);
         };
