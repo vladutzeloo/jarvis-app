@@ -85,6 +85,17 @@ export async function send() {
   let tokenCount = 0;
   let assistantText = "";
 
+  const handleStreamChunk = (chunk: string, suffix = "") => {
+    assistantText += chunk;
+    assistantBody.innerHTML = renderMarkdown(assistantText);
+    tokenCount++;
+    bumpTokens(1);
+    if (tokenCount % 10 === 0) updateTokenCells();
+    const elapsed = (performance.now() - startTime) / 1000;
+    const rate = tokenCount / elapsed;
+    stats.textContent = `${tokenCount} tok • ${rate.toFixed(1)} tok/s • ${elapsed.toFixed(1)}s${suffix}`;
+  };
+
   let researchResult: ResearchResult | null = null;
   if (researchMode) {
     try {
@@ -138,14 +149,7 @@ export async function send() {
           max_tokens: settings.numPredict > 0 ? settings.numPredict : undefined,
         },
         (delta) => {
-          assistantText += delta;
-          assistantBody.innerHTML = renderMarkdown(assistantText);
-          tokenCount++;
-          bumpTokens(1);
-          if (tokenCount % 10 === 0) updateTokenCells();
-          const elapsed = (performance.now() - startTime) / 1000;
-          const rate = tokenCount / elapsed;
-          stats.textContent = `${tokenCount} tok • ${rate.toFixed(1)} tok/s • ${elapsed.toFixed(1)}s · NVIDIA`;
+          handleStreamChunk(delta, " · NVIDIA");
         },
       );
       const elapsed = (performance.now() - startTime) / 1000;
@@ -185,14 +189,7 @@ export async function send() {
 
           const chunk = obj.message?.content || "";
           if (chunk) {
-            assistantText += chunk;
-            assistantBody.innerHTML = renderMarkdown(assistantText);
-            tokenCount++;
-            bumpTokens(1);
-            if (tokenCount % 10 === 0) updateTokenCells();
-            const elapsed = (performance.now() - startTime) / 1000;
-            const rate = tokenCount / elapsed;
-            stats.textContent = `${tokenCount} tok • ${rate.toFixed(1)} tok/s • ${elapsed.toFixed(1)}s`;
+            handleStreamChunk(chunk);
           }
 
           if (obj.done) {
