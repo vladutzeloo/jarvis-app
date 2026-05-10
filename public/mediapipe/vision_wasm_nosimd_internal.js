@@ -3312,19 +3312,22 @@ var FS = {
         var doXHR = (from, to) => {
           if (from > to) abort("invalid range (" + from + ", " + to + ") or no bytes requested!");
           if (to > datalength - 1) abort("only " + datalength + " bytes available! programmer error!");
-          // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
           var xhr = new XMLHttpRequest;
           xhr.open("GET", url, false);
           if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
           // Some hints to the browser that we want binary data.
-          xhr.responseType = "arraybuffer";
+          try {
+            xhr.responseType = "arraybuffer";
+          } catch (e) {}
           if (xhr.overrideMimeType) {
             xhr.overrideMimeType("text/plain; charset=x-user-defined");
           }
           xhr.send(null);
           if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) abort("Couldn't load " + url + ". Status: " + xhr.status);
-          if (xhr.response !== undefined) {
-            return new Uint8Array(/** @type{Array<number>} */ (xhr.response || []));
+          if (typeof ArrayBuffer !== 'undefined' && xhr.response instanceof ArrayBuffer) {
+            return new Uint8Array(/** @type{Array<number>} */ (xhr.response));
+          } else if (typeof ArrayBuffer !== 'undefined' && xhr.mozResponseArrayBuffer instanceof ArrayBuffer) {
+            return new Uint8Array(/** @type{Array<number>} */ (xhr.mozResponseArrayBuffer));
           }
           return intArrayFromString(xhr.responseText || "", true);
         };
