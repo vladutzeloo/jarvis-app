@@ -2166,8 +2166,7 @@ var FS = {
     var mode = FS.flagsToPermissionString(flags);
     if (FS.isDir(node.mode)) {
       // opening for write
-      // TODO: check for O_SEARCH? (== search for dir only)
-      if (mode !== "r" || (flags & (512 | 64))) {
+      if (!(flags & 2097152) && (mode !== "r" || (flags & (512 | 64)))) {
         return 31;
       }
     }
