@@ -142,7 +142,7 @@ Java_com_jarvis_localchat_llm_LlamaBridge_nativeGenerate(
 
     // Reset KV cache so each call is a fresh turn (history is re-sent in prompt).
     // V1 keeps things simple; KV reuse is on the upgrade path.
-    llama_kv_self_clear(s->ctx);
+    llama_memory_clear(llama_get_memory(s->ctx), true);
 
     // Prefill.
     llama_batch batch = llama_batch_get_one(tokens.data(), (int)tokens.size());
