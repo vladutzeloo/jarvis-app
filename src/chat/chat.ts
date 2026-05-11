@@ -85,6 +85,25 @@ export async function send() {
   let tokenCount = 0;
   let assistantText = "";
 
+  function handleStreamChunk(chunk: string, isNvidia: boolean) {
+    if (!chunk) return;
+    assistantText += chunk;
+    assistantBody.innerHTML = renderMarkdown(assistantText);
+    tokenCount++;
+    bumpTokens(1);
+    if (tokenCount % 10 === 0) updateTokenCells();
+    const elapsed = (performance.now() - startTime) / 1000;
+    const rate = tokenCount / elapsed;
+    const suffix = isNvidia ? " · NVIDIA" : "";
+    stats.textContent = `${tokenCount} tok • ${rate.toFixed(1)} tok/s • ${elapsed.toFixed(1)}s${suffix}`;
+  }
+
+  function finalizeStats(finalCount: number, elapsedSecs: number, isNvidia: boolean) {
+    const finalRate = elapsedSecs > 0 ? finalCount / elapsedSecs : 0;
+    const suffix = isNvidia ? " · NVIDIA" : "";
+    stats.textContent = `${finalCount} tok • ${finalRate.toFixed(1)} tok/s • ${elapsedSecs.toFixed(1)}s${suffix}`;
+  }
+
   let researchResult: ResearchResult | null = null;
   if (researchMode) {
     try {
@@ -138,20 +157,12 @@ export async function send() {
           max_tokens: settings.numPredict > 0 ? settings.numPredict : undefined,
         },
         (delta) => {
-          assistantText += delta;
-          assistantBody.innerHTML = renderMarkdown(assistantText);
-          tokenCount++;
-          bumpTokens(1);
-          if (tokenCount % 10 === 0) updateTokenCells();
-          const elapsed = (performance.now() - startTime) / 1000;
-          const rate = tokenCount / elapsed;
-          stats.textContent = `${tokenCount} tok • ${rate.toFixed(1)} tok/s • ${elapsed.toFixed(1)}s · NVIDIA`;
+          handleStreamChunk(delta, true);
         },
       );
       const elapsed = (performance.now() - startTime) / 1000;
       const finalCount = summary.tokens > 0 ? summary.tokens : tokenCount;
-      const finalRate = elapsed > 0 ? finalCount / elapsed : 0;
-      stats.textContent = `${finalCount} tok • ${finalRate.toFixed(1)} tok/s • ${elapsed.toFixed(1)}s · NVIDIA`;
+      finalizeStats(finalCount, elapsed, true);
     } else {
       const res = await fetch(`${OLLAMA_BASE}/api/chat`, {
         method: "POST",
@@ -190,21 +201,13 @@ export async function send() {
 
           const chunk = obj.message?.content || "";
           if (chunk) {
-            assistantText += chunk;
-            assistantBody.innerHTML = renderMarkdown(assistantText);
-            tokenCount++;
-            bumpTokens(1);
-            if (tokenCount % 10 === 0) updateTokenCells();
-            const elapsed = (performance.now() - startTime) / 1000;
-            const rate = tokenCount / elapsed;
-            stats.textContent = `${tokenCount} tok • ${rate.toFixed(1)} tok/s • ${elapsed.toFixed(1)}s`;
+            handleStreamChunk(chunk, false);
           }
 
           if (obj.done) {
             const evalCount = obj.eval_count || tokenCount;
             const evalDur = (obj.eval_duration || 0) / 1e9;
-            const finalRate = evalDur > 0 ? evalCount / evalDur : 0;
-            stats.textContent = `${evalCount} tok • ${finalRate.toFixed(1)} tok/s • ${evalDur.toFixed(1)}s`;
+            finalizeStats(evalCount, evalDur, false);
           }
         }
       }
