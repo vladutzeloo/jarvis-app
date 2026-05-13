@@ -350,7 +350,7 @@ function buildDock(): void {
     <div class="dj-dock-card">
       <div class="dj-dock-header">
         <div class="dj-dock-title">DJ-7 - NOW PLAYING</div>
-        <button class="dj-dock-close" type="button" data-dj-close title="Close">x</button>
+        <button class="dj-dock-close" type="button" data-dj-close title="Close" aria-label="Close">x</button>
       </div>
       <div class="dj-dock-track">
         <div class="dj-dock-art" data-dj-art></div>
@@ -368,10 +368,10 @@ function buildDock(): void {
         <ul class="dj-dock-suggestions-list" data-dj-suggestions-list></ul>
       </div>
       <div class="dj-dock-controls">
-        <button type="button" data-dj-play title="Play / pause">&#9654;</button>
-        <button type="button" data-dj-next title="Next discovery">&#9197;</button>
+        <button type="button" data-dj-play title="Play / pause" aria-label="Play or pause">&#9654;</button>
+        <button type="button" data-dj-next title="Next discovery" aria-label="Next track">&#9197;</button>
         <input type="text" data-dj-query placeholder="genre / artist..." spellcheck="false" />
-        <button type="button" data-dj-search title="Search Audius">&#128269;</button>
+        <button type="button" data-dj-search title="Search Audius" aria-label="Search Audius">&#128269;</button>
       </div>
       <div class="dj-dock-hint">via Audius - click to discover new tracks</div>
     </div>
