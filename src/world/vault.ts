@@ -227,7 +227,7 @@ export function buildVault(scene: THREE.Scene): VaultHandle {
       <div class="vault-hud-panel" role="dialog" aria-modal="true" aria-label="Money vault">
         <div class="vault-hud-header">
           <div class="vault-hud-title">MONEY VAULT</div>
-          <button class="vault-hud-close" type="button" data-close title="Close">×</button>
+          <button class="vault-hud-close" type="button" data-close title="Close" aria-label="Close money vault">×</button>
         </div>
         <div class="vault-hud-body">
           <label class="vault-hud-row">
