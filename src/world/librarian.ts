@@ -82,13 +82,13 @@ function buildDock(): void {
     <div class="librarian-dock-card">
       <div class="librarian-dock-header">
         <div class="librarian-dock-title">LIBRARIAN · OBSIDIAN BRAIN</div>
-        <button class="librarian-dock-close" type="button" data-lib-close title="Close">×</button>
+        <button class="librarian-dock-close" type="button" data-lib-close title="Close" aria-label="Close librarian">×</button>
       </div>
       <div class="librarian-dock-status" data-lib-status>READY</div>
       <div class="librarian-dock-answer" data-lib-answer></div>
       <form class="librarian-dock-form" data-lib-form autocomplete="off">
         <input type="text" data-lib-input placeholder="What does my vault say about…" spellcheck="false" />
-        <button type="submit" data-lib-ask title="Ask">→</button>
+        <button type="submit" data-lib-ask title="Ask" aria-label="Ask librarian">→</button>
       </form>
       <div class="librarian-dock-hint">via NVIDIA · grounded in your local Obsidian vault</div>
     </div>
