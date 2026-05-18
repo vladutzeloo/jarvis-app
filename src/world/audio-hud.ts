@@ -19,7 +19,7 @@ export function initAudioHud(): void {
   container.innerHTML = `
     <div class="wah-title">
       <span>AUDIO</span>
-      <button class="wah-mute" data-mute title="Mute / unmute SFX">
+      <button class="wah-mute" data-mute title="Mute / unmute SFX" aria-label="Mute / unmute SFX">
         ${isMuted() ? "🔇" : "🔊"}
       </button>
     </div>
